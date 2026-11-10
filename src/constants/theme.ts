@@ -29,6 +29,7 @@ export const NexoraColors = {
   surfaceCard: '#ffffff',
   midnightHeader: '#0b192c',
   midnightDark: '#041427',
+  sidebarBg: '#0b192c',
 
   // Typography
   textPrimary: '#0f172a',

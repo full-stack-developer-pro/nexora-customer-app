@@ -1,38 +1,39 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Home, Search, ShoppingBag, Calendar, User } from 'lucide-react-native';
-import { NexoraColors } from '@/constants/theme';
-import { Platform } from 'react-native';
+import { CustomerTabBar } from '@/components/navigation/CustomerTabBar';
 
 export default function TabsLayout() {
   return (
     <Tabs
+      tabBar={(props) => <CustomerTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: NexoraColors.primary,
-        tabBarInactiveTintColor: NexoraColors.textMuted,
-        tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor: NexoraColors.border,
-          borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 86 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Explore',
-          tabBarIcon: ({ color, size }) => <Home size={size || 22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="search"
+        options={{
+          title: 'Browse',
+        }}
+      />
+      <Tabs.Screen
+        name="bookings"
+        options={{
+          title: 'Bookings',
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
         }}
       />
     </Tabs>
   );
 }
-

@@ -23,7 +23,7 @@ export const NexoraLogo: React.FC<NexoraLogoProps> = ({
   }[size];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, size === 'sm' && { gap: 8 }]}>
       {/* Brand Icon Image */}
       <View
         style={[
@@ -53,13 +53,14 @@ export const NexoraLogo: React.FC<NexoraLogoProps> = ({
             style={[
               styles.brandTitle,
               { color: inverted ? '#ffffff' : NexoraColors.textPrimary },
+              size === 'sm' && { fontSize: 16, letterSpacing: 0.8 },
               size === 'lg' && { fontSize: 24 },
               size === 'xl' && { fontSize: 28 },
             ]}
           >
             NEXORA<Text style={styles.brandAccent}>.</Text>
           </Text>
-          {subtitle ? (
+          {subtitle && subtitle.trim().length > 0 ? (
             <Text
               style={[
                 styles.brandSubtitle,
