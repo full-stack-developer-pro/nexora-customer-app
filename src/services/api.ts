@@ -6,7 +6,7 @@ export const API_BASE_URL = 'https://nexora-backend-16q8.onrender.com/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 20000,
+  timeout: 60000, // 60s timeout to allow Render free-tier cold starts
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -37,13 +37,21 @@ apiClient.interceptors.response.use(
       await AsyncStorage.removeItem('nexora_customer_token');
       await AsyncStorage.removeItem('nexora_customer_user');
     }
-    const message =
-      error.response?.data?.message ||
-      error.message ||
-      'An unexpected network error occurred. Please try again.';
+
+    let message = error.response?.data?.message;
+
+    if (!message) {
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        message = 'Server is waking up from sleep. Please wait a moment and try again.';
+      } else if (error.message === 'Network Error') {
+        message = 'Unable to connect to server. Please check your internet connection and try again.';
+      } else {
+        message = error.message || 'An unexpected network error occurred. Please try again.';
+      }
+    }
+
     return Promise.reject(new Error(message));
   }
 );
 
 export default apiClient;
-
