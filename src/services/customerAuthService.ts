@@ -144,6 +144,23 @@ export const customerAuthService = {
   },
 
   /**
+   * Update current customer basic profile
+   */
+  updateProfile: async (payload: { name?: string; phone?: string; avatar?: string }): Promise<CustomerUser> => {
+    try {
+      const res: any = await apiClient.put('/auth/profile', payload);
+      const user = res?.data?.user || res?.user;
+      if (user) {
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+        return user;
+      }
+      throw new Error(res?.message || 'Failed to update profile');
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to update profile');
+    }
+  },
+
+  /**
    * Logout customer
    */
   logout: async (): Promise<void> => {

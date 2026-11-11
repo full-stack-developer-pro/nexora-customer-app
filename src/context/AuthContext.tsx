@@ -10,6 +10,7 @@ interface AuthContextType {
   loginWithGoogle: (idToken: string) => Promise<CustomerUser>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<CustomerUser | null>;
+  updateProfile: (payload: { name?: string; phone?: string; avatar?: string }) => Promise<CustomerUser>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -89,6 +90,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return fresh;
   };
 
+  const updateProfile = async (payload: { name?: string; phone?: string; avatar?: string }): Promise<CustomerUser> => {
+    setIsLoading(true);
+    try {
+      const updated = await customerAuthService.updateProfile(payload);
+      setUser(updated);
+      return updated;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -98,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loginWithGoogle,
     logout,
     refreshUser,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
