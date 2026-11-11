@@ -43,6 +43,7 @@ import {
   Crosshair,
 } from 'lucide-react-native';
 import { NexoraColors, Radius, Shadows } from '@/constants/theme';
+import { NexoraSwitch } from '@/components/common/NexoraSwitch';
 import { useAuth } from '@/context/AuthContext';
 import { useLocation, CustomerLocation } from '@/context/LocationContext';
 
@@ -360,11 +361,9 @@ export default function ProfileScreen() {
               <Text style={styles.menuLabel}>Order & Dispatch Alerts</Text>
               <Text style={styles.menuSubLabel}>Push notifications for arrival times</Text>
             </View>
-            <Switch
+            <NexoraSwitch
               value={notificationsEnabled}
               onValueChange={setNotificationsEnabled}
-              trackColor={{ false: '#cbd5e1', true: NexoraColors.primary }}
-              thumbColor="#ffffff"
             />
           </View>
 
