@@ -13,7 +13,7 @@ import { NexoraSplashScreen } from '@/components/common/NexoraSplashScreen';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export const unstable_settings = {
-  initialRouteName: 'index',
+  anchor: 'index',
 };
 
 export default function RootLayout() {

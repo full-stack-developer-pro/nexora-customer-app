@@ -181,8 +181,7 @@ export const customerAuthService = {
     try {
       const res: any = await apiClient.delete(`/auth/addresses/${id}`);
       return res?.data || res || [];
-    } catch (err: any) {
-      console.warn('Failed to delete address on backend:', err);
+    } catch {
       return [];
     }
   },
@@ -191,8 +190,7 @@ export const customerAuthService = {
     try {
       const res: any = await apiClient.patch(`/auth/addresses/${id}/default`);
       return res?.data || res || [];
-    } catch (err: any) {
-      console.warn('Failed to set default address on backend:', err);
+    } catch {
       return [];
     }
   },

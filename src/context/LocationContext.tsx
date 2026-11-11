@@ -35,6 +35,9 @@ interface LocationContextType {
 const STORAGE_ACTIVE_LOCATION_KEY = '@nexora_customer_active_location';
 const STORAGE_SAVED_ADDRESSES_KEY = '@nexora_customer_saved_addresses';
 
+// Helper to verify 24-char hex MongoDB ObjectId
+const isMongoId = (id?: string): boolean => Boolean(id && /^[0-9a-fA-F]{24}$/.test(id));
+
 // Default starter location for preview when user hasn't specified
 export const DEFAULT_FALLBACK_LOCATION: CustomerLocation = {
   id: 'default_loc_1',
@@ -236,8 +239,8 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       await AsyncStorage.setItem(STORAGE_ACTIVE_LOCATION_KEY, JSON.stringify(loc));
       const token = await customerAuthService.getToken();
-      if (token && loc.id && !loc.id.startsWith('default_') && !loc.id.startsWith('preset_')) {
-        customerAuthService.setDefaultAddress(loc.id).catch(() => {});
+      if (token && isMongoId(loc.id)) {
+        customerAuthService.setDefaultAddress(loc.id!).catch(() => {});
       }
     } catch (e) {
       console.warn('Error saving active location:', e);
@@ -302,7 +305,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       await AsyncStorage.setItem(STORAGE_SAVED_ADDRESSES_KEY, JSON.stringify(updated));
       const token = await customerAuthService.getToken();
-      if (token && !id.startsWith('default_') && !id.startsWith('preset_')) {
+      if (token && isMongoId(id)) {
         customerAuthService.deleteAddress(id).catch(() => {});
       }
     } catch (e) {
