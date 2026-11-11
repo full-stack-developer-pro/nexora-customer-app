@@ -25,7 +25,7 @@ export const NexoraSwitch: React.FC<NexoraSwitchProps> = ({
 
   const translateX = animatedValue.interpolate({
     inputRange: [0, 1],
-    outputRange: [2, 22],
+    outputRange: [0, 20],
   });
 
   const backgroundColor = animatedValue.interpolate({
@@ -66,3 +66,4 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 });
+

@@ -267,17 +267,16 @@ export default function CustomerHomeScreen() {
       <StatusBar style="light" />
       {/* Top Header Bar */}
       <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 24) + 12 }]}>
-        <View style={styles.headerTopRow}>
-          <View style={styles.greetingCol}>
-            <Text style={styles.welcomeSubtitle} numberOfLines={1}>Welcome back,</Text>
-            <Text style={styles.customerName} numberOfLines={1}>{user?.name || 'Nexora Customer'}</Text>
-          </View>
+        {/* Top Nav Row: Location Pill on Left, Brand Logo on Right */}
+        <View style={styles.headerTopNavRow}>
+          <LocationHeaderPill inverted={true} />
           <NexoraLogo size="sm" subtitle="" inverted={true} />
         </View>
 
-        {/* Location / Service Delivery Area Selector */}
-        <View style={styles.headerLocationRow}>
-          <LocationHeaderPill inverted={true} />
+        {/* Greeting Row */}
+        <View style={styles.greetingCol}>
+          <Text style={styles.welcomeSubtitle} numberOfLines={1}>Welcome back,</Text>
+          <Text style={styles.customerName} numberOfLines={1}>{user?.name || 'Nexora Customer'}</Text>
         </View>
 
         {/* Global Search Bar with Live Suggestions Dropdown */}
@@ -924,21 +923,14 @@ const styles = StyleSheet.create({
     zIndex: 100,
     elevation: 10,
   },
-  headerTopRow: {
+  headerTopNavRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  headerLocationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   greetingCol: {
-    flex: 1,
-    paddingRight: 14,
-    justifyContent: 'center',
+    marginBottom: 14,
   },
   welcomeSubtitle: {
     fontSize: 11,
@@ -948,7 +940,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   customerName: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#ffffff',
     marginTop: 2,

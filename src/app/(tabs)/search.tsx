@@ -557,23 +557,20 @@ export default function BrowseScreen() {
       {/* Top Midnight Header with Universal Search */}
       <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 24) + 8 }]}>
         <View style={styles.headerTitleRow}>
-          <View>
+          <View style={{ flex: 1, paddingRight: 8 }}>
             <Text style={styles.headerTitle}>Browse & Search</Text>
             <Text style={styles.headerSubtitle}>Vetted local pros & hardware supplies</Text>
           </View>
 
-          {/* Reset button if filters active */}
-          {activeFilterCount > 0 && (
-            <TouchableOpacity style={styles.resetHeaderBtn} onPress={resetFilters}>
-              <RotateCcw size={13} color="#ffffff" />
-              <Text style={styles.resetHeaderBtnText}>Reset ({activeFilterCount})</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Location / Service Delivery Area Selector */}
-        <View style={{ marginBottom: 12 }}>
-          <LocationHeaderPill inverted={true} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <LocationHeaderPill inverted={true} compact={true} />
+            {activeFilterCount > 0 && (
+              <TouchableOpacity style={styles.resetHeaderBtn} onPress={resetFilters}>
+                <RotateCcw size={13} color="#ffffff" />
+                <Text style={styles.resetHeaderBtnText}>Reset ({activeFilterCount})</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Search Input Bar */}
