@@ -11,6 +11,7 @@ export interface CustomerUser {
   status: 'approved' | 'pending_approval' | 'suspended';
   authProvider?: 'local' | 'google' | 'apple';
   createdAt?: string;
+  addresses?: any[];
 }
 
 const STORAGE_KEYS = {
@@ -151,6 +152,48 @@ export const customerAuthService = {
     } finally {
       await AsyncStorage.removeItem(STORAGE_KEYS.TOKEN);
       await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+    }
+  },
+
+  /**
+   * Address Management APIs
+   */
+  getAddresses: async (): Promise<any[]> => {
+    try {
+      const res: any = await apiClient.get('/auth/addresses');
+      return res?.data || res || [];
+    } catch {
+      return [];
+    }
+  },
+
+  addAddress: async (payload: any): Promise<any[]> => {
+    try {
+      const res: any = await apiClient.post('/auth/addresses', payload);
+      return res?.data || res || [];
+    } catch (err: any) {
+      console.warn('Failed to sync address to backend:', err);
+      return [];
+    }
+  },
+
+  deleteAddress: async (id: string): Promise<any[]> => {
+    try {
+      const res: any = await apiClient.delete(`/auth/addresses/${id}`);
+      return res?.data || res || [];
+    } catch (err: any) {
+      console.warn('Failed to delete address on backend:', err);
+      return [];
+    }
+  },
+
+  setDefaultAddress: async (id: string): Promise<any[]> => {
+    try {
+      const res: any = await apiClient.patch(`/auth/addresses/${id}/default`);
+      return res?.data || res || [];
+    } catch (err: any) {
+      console.warn('Failed to set default address on backend:', err);
+      return [];
     }
   },
 };

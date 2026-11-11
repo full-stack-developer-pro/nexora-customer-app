@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/context/AuthContext';
+import { LocationProvider } from '@/context/LocationContext';
+import { LocationPickerModal } from '@/components/common/LocationPickerModal';
 import { NexoraColors } from '@/constants/theme';
 import { NexoraSplashScreen } from '@/components/common/NexoraSplashScreen';
 
@@ -37,24 +39,29 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <StatusBar style="light" />
-        <View style={{ flex: 1, backgroundColor: NexoraColors.midnightDark }}>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: NexoraColors.canvas },
-              animation: 'slide_from_right',
-            }}
-          >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
+        <LocationProvider>
+          <StatusBar style="light" />
+          <View style={{ flex: 1, backgroundColor: NexoraColors.midnightDark }}>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: NexoraColors.canvas },
+                animation: 'slide_from_right',
+              }}
+            >
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
 
-          {isMounted && showSplash && (
-            <NexoraSplashScreen onFinish={() => setShowSplash(false)} />
-          )}
-        </View>
+            {/* Global Location & Address Picker Sheet */}
+            <LocationPickerModal />
+
+            {isMounted && showSplash && (
+              <NexoraSplashScreen onFinish={() => setShowSplash(false)} />
+            )}
+          </View>
+        </LocationProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

@@ -97,6 +97,23 @@ const DEFAULT_CATEGORIES: ServiceCategory[] = [
   { _id: 'cat_7', name: 'Contractors & Remodeling', slug: 'contractors-remodeling', iconName: 'Home', iconColor: '#0f766e' },
 ];
 
+export interface ProductCategoryItem {
+  _id: string;
+  name: string;
+  slug: string;
+  iconName?: string;
+  iconColor?: string;
+  subcategories?: { name: string; slug: string }[];
+}
+
+const DEFAULT_PRODUCT_CATEGORIES: ProductCategoryItem[] = [
+  { _id: 'pcat_1', name: 'Plumbing Fixtures & Supplies', slug: 'plumbing-fixtures-supplies', iconName: 'Droplet', iconColor: '#084e8a' },
+  { _id: 'pcat_2', name: 'Electrical Supplies & Wiring', slug: 'electrical-supplies-wiring', iconName: 'Zap', iconColor: '#eab308' },
+  { _id: 'pcat_3', name: 'Power Tools & Equipment', slug: 'power-tools-equipment', iconName: 'Hammer', iconColor: '#b45309' },
+  { _id: 'pcat_4', name: 'HVAC Parts & Air Filtration', slug: 'hvac-parts-filtration', iconName: 'Wind', iconColor: '#0284c7' },
+  { _id: 'pcat_5', name: 'Safety Gear & Workwear', slug: 'safety-gear-workwear', iconName: 'Shield', iconColor: '#0f766e' },
+];
+
 const DEFAULT_SERVICES: ServiceOffering[] = [
   {
     _id: 'serv_1',
@@ -253,32 +270,83 @@ export const marketplaceService = {
   },
 
   /**
-   * Fetch featured services for customer feed
+   * Fetch active product categories for hardware & supplies
    */
-  async getFeaturedServices(limit = 6): Promise<ServiceOffering[]> {
+  async getProductCategories(): Promise<ProductCategoryItem[]> {
     try {
+      const res: any = await apiClient.get('/product-categories', {
+        params: { status: 'active', limit: 30 },
+      });
+      const data = res?.data || res?.categories;
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+      return DEFAULT_PRODUCT_CATEGORIES;
+    } catch {
+      return DEFAULT_PRODUCT_CATEGORIES;
+    }
+  },
+
+  /**
+   * Fetch services (featured or filtered with search / category / pricingType / sortBy)
+   */
+  async getFeaturedServices(
+    limitOrParams:
+      | number
+      | {
+          search?: string;
+          category?: string;
+          pricingType?: string;
+          sortBy?: string;
+          limit?: number;
+        } = 6
+  ): Promise<ServiceOffering[]> {
+    try {
+      const params = typeof limitOrParams === 'number' ? { limit: limitOrParams } : limitOrParams;
       const res: any = await apiClient.get('/services', {
-        params: { limit },
+        params,
       });
       const data = res?.data;
       if (Array.isArray(data) && data.length > 0) {
         return data;
       }
+      // If filtering or searching, return whatever backend returned (even empty array) rather than synthetic defaults
+      if (
+        typeof limitOrParams === 'object' &&
+        (limitOrParams.search || limitOrParams.category || limitOrParams.pricingType || limitOrParams.sortBy)
+      ) {
+        return Array.isArray(data) ? data : [];
+      }
       return DEFAULT_SERVICES;
     } catch {
+      if (typeof limitOrParams === 'object' && (limitOrParams.search || limitOrParams.category)) {
+        return [];
+      }
       return DEFAULT_SERVICES;
     }
   },
 
   /**
-   * Fetch physical products available in customer marketplace
+   * Fetch physical products available in customer marketplace (with search / category / inStock / sortBy)
    */
-  async getProducts(limit = 6): Promise<MarketplaceProduct[]> {
+  async getProducts(
+    limitOrParams:
+      | number
+      | {
+          search?: string;
+          category?: string;
+          inStock?: boolean;
+          condition?: string;
+          sortBy?: string;
+          limit?: number;
+        } = 6
+  ): Promise<MarketplaceProduct[]> {
     try {
+      const params = typeof limitOrParams === 'number' ? { limit: limitOrParams } : limitOrParams;
       const res: any = await apiClient.get('/products', {
-        params: { limit },
+        params,
       });
-      return res?.data || [];
+      return Array.isArray(res?.data) ? res.data : [];
     } catch {
       return [];
     }

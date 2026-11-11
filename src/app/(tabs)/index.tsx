@@ -36,10 +36,18 @@ import {
   AlertTriangle,
   PhoneCall,
   Award,
+  ArrowRight,
 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { NexoraColors, Radius, Shadows } from '@/constants/theme';
 import { NexoraLogo } from '@/components/common/NexoraLogo';
+import { LocationHeaderPill } from '@/components/common/LocationHeaderPill';
+import {
+  NexoraShimmer,
+  HomeServiceSlideSkeleton,
+  HomeProviderSlideSkeleton,
+  HomeProductSlideSkeleton,
+} from '@/components/common/NexoraShimmer';
 import {
   marketplaceService,
   ServiceCategory,
@@ -128,6 +136,47 @@ export default function CustomerHomeScreen() {
   const [productsScrollX, setProductsScrollX] = useState(0);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [quickServices, setQuickServices] = useState<ServiceOffering[]>([]);
+  const [quickProducts, setQuickProducts] = useState<MarketplaceProduct[]>([]);
+  const [isSearchingQuick, setIsSearchingQuick] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Instant Quick Search Dropdown on Home
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setQuickServices([]);
+      setQuickProducts([]);
+      setIsSearchingQuick(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingQuick(true);
+      try {
+        const [servs, prods] = await Promise.all([
+          marketplaceService.getFeaturedServices({ search: searchQuery.trim(), limit: 2 }),
+          marketplaceService.getProducts({ search: searchQuery.trim(), limit: 2 }),
+        ]);
+        setQuickServices(servs.slice(0, 2));
+        setQuickProducts(prods.slice(0, 2));
+      } catch {
+        // fallback
+      } finally {
+        setIsSearchingQuick(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleNavigateToSearch = (query = searchQuery.trim()) => {
+    setIsSearchFocused(false);
+    router.push({
+      pathname: '/(tabs)/search',
+      params: query ? { q: query } : undefined,
+    });
+  };
+
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [services, setServices] = useState<ServiceOffering[]>([]);
   const [providers, setProviders] = useState<FeaturedProvider[]>([]);
@@ -193,20 +242,20 @@ export default function CustomerHomeScreen() {
   const displayedServices = selectedCategory === 'all'
     ? services
     : services.filter((s) => {
-        const catSlug = (s.category?.slug || '').toLowerCase();
-        const catName = (s.category?.name || '').toLowerCase();
-        const subCat = ((s as any).subcategory || '').toLowerCase();
-        const title = (s.title || '').toLowerCase();
-        const sel = selectedCategory.toLowerCase();
-        return (
-          catSlug === sel ||
-          catSlug.includes(sel) ||
-          sel.includes(catSlug) ||
-          catName.includes(sel) ||
-          subCat.includes(sel) ||
-          title.includes(sel)
-        );
-      });
+      const catSlug = (s.category?.slug || '').toLowerCase();
+      const catName = (s.category?.name || '').toLowerCase();
+      const subCat = ((s as any).subcategory || '').toLowerCase();
+      const title = (s.title || '').toLowerCase();
+      const sel = selectedCategory.toLowerCase();
+      return (
+        catSlug === sel ||
+        catSlug.includes(sel) ||
+        sel.includes(catSlug) ||
+        catName.includes(sel) ||
+        subCat.includes(sel) ||
+        title.includes(sel)
+      );
+    });
 
   const selectedCategoryObj = categories.find((c) => c.slug === selectedCategory);
   const sectionHeaderTitle = selectedCategory === 'all'
@@ -226,7 +275,12 @@ export default function CustomerHomeScreen() {
           <NexoraLogo size="sm" subtitle="" inverted={true} />
         </View>
 
-        {/* Global Search Bar */}
+        {/* Location / Service Delivery Area Selector */}
+        <View style={styles.headerLocationRow}>
+          <LocationHeaderPill inverted={true} />
+        </View>
+
+        {/* Global Search Bar with Live Suggestions Dropdown */}
         <View style={styles.searchBarWrapper}>
           <Search size={18} color="#94a3b8" style={{ marginRight: 8 }} />
           <TextInput
@@ -235,15 +289,118 @@ export default function CustomerHomeScreen() {
             placeholderTextColor="#94a3b8"
             value={searchQuery}
             onChangeText={setSearchQuery}
+            onFocus={() => setIsSearchFocused(true)}
             returnKeyType="search"
+            onSubmitEditing={() => handleNavigateToSearch()}
           />
           {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity
+              onPress={() => {
+                setSearchQuery('');
+                setIsSearchFocused(false);
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Clear</Text>
             </TouchableOpacity>
           ) : (
-            <View style={styles.filterIconButton}>
+            <TouchableOpacity
+              style={styles.filterIconButton}
+              onPress={() => {
+                router.push({
+                  pathname: '/(tabs)/search',
+                  params: { openFilter: 'true' },
+                });
+              }}
+              activeOpacity={0.7}
+            >
               <SlidersHorizontal size={16} color={NexoraColors.primary} />
+            </TouchableOpacity>
+          )}
+
+          {/* Floating Live Suggestions Dropdown */}
+          {searchQuery.trim().length > 0 && isSearchFocused && (
+            <View style={styles.quickSearchPopup}>
+              {isSearchingQuick ? (
+                <View style={styles.quickSearchLoading}>
+                  <NexoraShimmer width="65%" height={14} borderRadius={4} style={{ marginBottom: 10 }} />
+                  <NexoraShimmer width="85%" height={14} borderRadius={4} />
+                </View>
+              ) : quickServices.length > 0 || quickProducts.length > 0 ? (
+                <View style={styles.quickSearchContent}>
+                  {/* Quick Services */}
+                  {quickServices.map((item) => (
+                    <TouchableOpacity
+                      key={item._id}
+                      style={styles.quickResultRow}
+                      onPress={() => handleNavigateToSearch(item.title)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={[styles.quickResultIconBox, { backgroundColor: '#eef5fc' }]}>
+                        <Wrench size={14} color={NexoraColors.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.quickResultTitle} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        <Text style={styles.quickResultSubtitle} numberOfLines={1}>
+                          Service • {getTradeDisplayName(item.category?.slug, item.category?.name)} • ${item.price}
+                        </Text>
+                      </View>
+                      <ChevronRight size={14} color="#94a3b8" />
+                    </TouchableOpacity>
+                  ))}
+
+                  {/* Quick Products */}
+                  {quickProducts.map((item) => (
+                    <TouchableOpacity
+                      key={item._id}
+                      style={styles.quickResultRow}
+                      onPress={() => handleNavigateToSearch(item.name)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={[styles.quickResultIconBox, { backgroundColor: '#ecfdf5' }]}>
+                        <Package size={14} color="#059669" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.quickResultTitle} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                        <Text style={styles.quickResultSubtitle} numberOfLines={1}>
+                          Supplies • ${Number(item.price).toFixed(2)}
+                        </Text>
+                      </View>
+                      <ChevronRight size={14} color="#94a3b8" />
+                    </TouchableOpacity>
+                  ))}
+
+                  {/* View All Matching Results Link */}
+                  <TouchableOpacity
+                    style={styles.viewAllSearchesBtn}
+                    onPress={() => handleNavigateToSearch()}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.viewAllSearchesText}>
+                      View all results for "{searchQuery.trim()}"
+                    </Text>
+                    <ArrowRight size={14} color={NexoraColors.primary} />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.noQuickMatchBox}
+                  onPress={() => handleNavigateToSearch()}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.noQuickMatchText}>
+                    No quick preview for "{searchQuery.trim()}"
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <Text style={styles.searchAllCatalogText}>Search full catalog</Text>
+                    <ArrowRight size={13} color={NexoraColors.primary} />
+                  </View>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -342,7 +499,11 @@ export default function CustomerHomeScreen() {
           </View>
 
           <View style={styles.headerControlsGroup}>
-            <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={() => router.push({ pathname: '/(tabs)/search', params: { tab: 'services' } })}
+              activeOpacity={0.7}
+            >
               <Text style={styles.seeAllText}>View All</Text>
             </TouchableOpacity>
 
@@ -365,7 +526,16 @@ export default function CustomerHomeScreen() {
           </View>
         </View>
 
-        {displayedServices.length === 0 ? (
+        {loading ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.servicesSliderContent}
+          >
+            <HomeServiceSlideSkeleton />
+            <HomeServiceSlideSkeleton />
+          </ScrollView>
+        ) : displayedServices.length === 0 ? (
           <View style={styles.emptyServicesBox}>
             <Wrench size={32} color="#94a3b8" />
             <Text style={styles.emptyTitle}>No Services Available</Text>
@@ -471,7 +641,11 @@ export default function CustomerHomeScreen() {
               </View>
 
               <View style={styles.headerControlsGroup}>
-                <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <TouchableOpacity
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  onPress={() => router.push({ pathname: '/(tabs)/search', params: { tab: 'products' } })}
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.seeAllText}>View All</Text>
                 </TouchableOpacity>
 
@@ -494,65 +668,76 @@ export default function CustomerHomeScreen() {
               </View>
             </View>
 
-            <ScrollView
-              ref={providersScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={PROVIDER_SNAP_INTERVAL}
-              decelerationRate="fast"
-              contentContainerStyle={styles.providersSliderContent}
-              onScroll={(e) => setProvidersScrollX(e.nativeEvent.contentOffset.x)}
-              scrollEventThrottle={16}
-            >
-              {providers.map((pro) => (
-                <View key={pro._id} style={styles.providerCard}>
-                  {/* Top: Avatar & Rating badge */}
-                  <View style={styles.providerCardTop}>
-                    <View style={styles.providerAvatarCircle}>
-                      {pro.profileImage ? (
-                        <Image source={{ uri: pro.profileImage }} style={styles.providerImg} resizeMode="cover" />
-                      ) : (
-                        <Text style={styles.providerAvatarInitials}>
-                          {(pro.name || 'P')[0]?.toUpperCase()}
-                        </Text>
-                      )}
-                      <View style={styles.verifiedCheckBadge}>
-                        <CheckCircle2 size={12} color="#ffffff" fill="#059669" />
+            {loading ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.providersSliderContent}
+              >
+                <HomeProviderSlideSkeleton />
+                <HomeProviderSlideSkeleton />
+              </ScrollView>
+            ) : (
+              <ScrollView
+                ref={providersScrollRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={PROVIDER_SNAP_INTERVAL}
+                decelerationRate="fast"
+                contentContainerStyle={styles.providersSliderContent}
+                onScroll={(e) => setProvidersScrollX(e.nativeEvent.contentOffset.x)}
+                scrollEventThrottle={16}
+              >
+                {providers.map((pro) => (
+                  <View key={pro._id} style={styles.providerCard}>
+                    {/* Top: Avatar & Rating badge */}
+                    <View style={styles.providerCardTop}>
+                      <View style={styles.providerAvatarCircle}>
+                        {pro.profileImage ? (
+                          <Image source={{ uri: pro.profileImage }} style={styles.providerImg} resizeMode="cover" />
+                        ) : (
+                          <Text style={styles.providerAvatarInitials}>
+                            {(pro.name || 'P')[0]?.toUpperCase()}
+                          </Text>
+                        )}
+                        <View style={styles.verifiedCheckBadge}>
+                          <CheckCircle2 size={12} color="#ffffff" fill="#059669" />
+                        </View>
+                      </View>
+
+                      <View style={styles.proRatingPill}>
+                        <Star size={11} color="#f59e0b" fill="#f59e0b" />
+                        <Text style={styles.proRatingPillText}>{pro.rating ? pro.rating.toFixed(1) : '5.0'}</Text>
                       </View>
                     </View>
 
-                    <View style={styles.proRatingPill}>
-                      <Star size={11} color="#f59e0b" fill="#f59e0b" />
-                      <Text style={styles.proRatingPillText}>{pro.rating ? pro.rating.toFixed(1) : '5.0'}</Text>
+                    {/* Middle: Name, Business & Trade */}
+                    <Text style={styles.proNameText} numberOfLines={1}>{pro.name}</Text>
+                    <Text style={styles.proBusinessText} numberOfLines={1}>{pro.businessName}</Text>
+
+                    <View style={styles.proTradeBadge}>
+                      <Text style={styles.proTradeBadgeText} numberOfLines={1}>{pro.trade}</Text>
                     </View>
+
+                    {/* Bottom: Stats & Action */}
+                    <View style={styles.proStatsRow}>
+                      <Text style={styles.proStatsText}>{pro.completedJobs}+ jobs completed</Text>
+                      <Text style={styles.proLocationText}>• {pro.city}, {pro.state}</Text>
+                    </View>
+
+                    <TouchableOpacity style={styles.proHireBtn} activeOpacity={0.85}>
+                      <Text style={styles.proHireBtnText}>Book Specialist</Text>
+                      <ChevronRight size={13} color="#ffffff" />
+                    </TouchableOpacity>
                   </View>
-
-                  {/* Middle: Name, Business & Trade */}
-                  <Text style={styles.proNameText} numberOfLines={1}>{pro.name}</Text>
-                  <Text style={styles.proBusinessText} numberOfLines={1}>{pro.businessName}</Text>
-
-                  <View style={styles.proTradeBadge}>
-                    <Text style={styles.proTradeBadgeText} numberOfLines={1}>{pro.trade}</Text>
-                  </View>
-
-                  {/* Bottom: Stats & Action */}
-                  <View style={styles.proStatsRow}>
-                    <Text style={styles.proStatsText}>{pro.completedJobs}+ jobs completed</Text>
-                    <Text style={styles.proLocationText}>• {pro.city}, {pro.state}</Text>
-                  </View>
-
-                  <TouchableOpacity style={styles.proHireBtn} activeOpacity={0.85}>
-                    <Text style={styles.proHireBtnText}>Book Specialist</Text>
-                    <ChevronRight size={13} color="#ffffff" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
+                ))}
+              </ScrollView>
+            )}
           </>
         )}
 
         {/* Physical Products / Hardware Supplies Slider */}
-        {products.length > 0 && (
+        {(loading || products.length > 0) && (
           <>
             <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
               <View style={{ flex: 1 }}>
@@ -560,7 +745,11 @@ export default function CustomerHomeScreen() {
               </View>
 
               <View style={styles.headerControlsGroup}>
-                <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <TouchableOpacity
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  onPress={() => router.push({ pathname: '/(tabs)/search', params: { tab: 'products' } })}
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.seeAllText}>View All</Text>
                 </TouchableOpacity>
 
@@ -583,117 +772,128 @@ export default function CustomerHomeScreen() {
               </View>
             </View>
 
-            <ScrollView
-              ref={productsScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={PRODUCT_SNAP_INTERVAL}
-              decelerationRate="fast"
-              contentContainerStyle={styles.productsSliderContent}
-              onScroll={(e) => setProductsScrollX(e.nativeEvent.contentOffset.x)}
-              scrollEventThrottle={16}
-            >
-              {products.map((prod) => {
-                const prodImgUrl = getImageUrl(prod.images?.[0]);
-                const condition = (prod.condition || 'new').toLowerCase();
-                const conditionLabel =
-                  condition === 'old'
-                    ? 'PRE-OWNED'
-                    : condition === 'refurbished'
-                      ? 'REFURBISHED'
-                      : 'BRAND NEW';
-                const hasDiscount = prod.compareAtPrice && prod.compareAtPrice > prod.price;
-                const discountPercent = hasDiscount
-                  ? Math.round(((prod.compareAtPrice! - prod.price) / prod.compareAtPrice!) * 100)
-                  : 0;
+            {loading ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.productsSliderContent}
+              >
+                <HomeProductSlideSkeleton />
+                <HomeProductSlideSkeleton />
+              </ScrollView>
+            ) : (
+              <ScrollView
+                ref={productsScrollRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={PRODUCT_SNAP_INTERVAL}
+                decelerationRate="fast"
+                contentContainerStyle={styles.productsSliderContent}
+                onScroll={(e) => setProductsScrollX(e.nativeEvent.contentOffset.x)}
+                scrollEventThrottle={16}
+              >
+                {products.map((prod) => {
+                  const prodImgUrl = getImageUrl(prod.images?.[0]);
+                  const condition = (prod.condition || 'new').toLowerCase();
+                  const conditionLabel =
+                    condition === 'old'
+                      ? 'PRE-OWNED'
+                      : condition === 'refurbished'
+                        ? 'REFURBISHED'
+                        : 'BRAND NEW';
+                  const hasDiscount = prod.compareAtPrice && prod.compareAtPrice > prod.price;
+                  const discountPercent = hasDiscount
+                    ? Math.round(((prod.compareAtPrice! - prod.price) / prod.compareAtPrice!) * 100)
+                    : 0;
 
-                const sellerName = prod.seller?.businessName || prod.seller?.name || 'Verified Merchant';
+                  const sellerName = prod.seller?.businessName || prod.seller?.name || 'Verified Merchant';
 
-                return (
-                  <TouchableOpacity key={prod._id} style={styles.productSlideCard} activeOpacity={0.88}>
-                    {/* Product Image & Badges */}
-                    <View style={styles.productImgContainer}>
-                      {prodImgUrl ? (
-                        <Image source={{ uri: prodImgUrl }} style={styles.productImg} resizeMode="cover" />
-                      ) : (
-                        <View style={styles.productImgPlaceholder}>
-                          <Package size={26} color="#94a3b8" />
+                  return (
+                    <TouchableOpacity key={prod._id} style={styles.productSlideCard} activeOpacity={0.88}>
+                      {/* Product Image & Badges */}
+                      <View style={styles.productImgContainer}>
+                        {prodImgUrl ? (
+                          <Image source={{ uri: prodImgUrl }} style={styles.productImg} resizeMode="cover" />
+                        ) : (
+                          <View style={styles.productImgPlaceholder}>
+                            <Package size={26} color="#94a3b8" />
+                          </View>
+                        )}
+
+                        {/* Condition Badge (Top Left) */}
+                        <View
+                          style={[
+                            styles.productBadgeCondition,
+                            condition === 'old'
+                              ? styles.badgeOld
+                              : condition === 'refurbished'
+                                ? styles.badgeRefurb
+                                : styles.badgeNew,
+                          ]}
+                        >
+                          <Text style={styles.productBadgeConditionText}>{conditionLabel}</Text>
                         </View>
-                      )}
 
-                      {/* Condition Badge (Top Left) */}
-                      <View
-                        style={[
-                          styles.productBadgeCondition,
-                          condition === 'old'
-                            ? styles.badgeOld
-                            : condition === 'refurbished'
-                              ? styles.badgeRefurb
-                              : styles.badgeNew,
-                        ]}
-                      >
-                        <Text style={styles.productBadgeConditionText}>{conditionLabel}</Text>
-                      </View>
-
-                      {/* Discount Badge (Top Right) */}
-                      {hasDiscount && (
-                        <View style={styles.productBadgeDiscount}>
-                          <Text style={styles.productBadgeDiscountText}>{discountPercent}% OFF</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Product Body Information */}
-                    <View style={styles.productInfo}>
-                      {/* Subcategory / Category Pill */}
-                      <Text style={styles.productCategoryLabel} numberOfLines={1}>
-                        {prod.subcategory || prod.category?.name || 'Hardware'}
-                      </Text>
-
-                      {/* Title */}
-                      <Text style={styles.productTitle} numberOfLines={2}>
-                        {prod.name}
-                      </Text>
-
-                      {/* Added by / Seller */}
-                      <View style={styles.sellerRow}>
-                        <Store size={11} color="#64748b" />
-                        <Text style={styles.sellerNameText} numberOfLines={1}>
-                          By {sellerName}
-                        </Text>
-                      </View>
-
-                      {/* Pricing Row */}
-                      <View style={styles.productPriceRow}>
-                        <Text style={styles.productPrice}>${Number(prod.price).toFixed(2)}</Text>
+                        {/* Discount Badge (Top Right) */}
                         {hasDiscount && (
-                          <Text style={styles.productComparePrice}>
-                            ${Number(prod.compareAtPrice).toFixed(2)}
-                          </Text>
+                          <View style={styles.productBadgeDiscount}>
+                            <Text style={styles.productBadgeDiscountText}>{discountPercent}% OFF</Text>
+                          </View>
                         )}
                       </View>
 
-                      {/* Stock Status */}
-                      <View style={styles.inStockRow}>
-                        <CheckCircle2 size={11} color={prod.stock > 0 ? '#059669' : '#dc2626'} />
-                        <Text
-                          style={[
-                            styles.inStockText,
-                            prod.stock === 0 && { color: '#dc2626' },
-                          ]}
-                        >
-                          {prod.stock > 0
-                            ? prod.stock <= 5
-                              ? `Only ${prod.stock} left`
-                              : `In Stock (${prod.stock})`
-                            : 'Out of Stock'}
+                      {/* Product Body Information */}
+                      <View style={styles.productInfo}>
+                        {/* Subcategory / Category Pill */}
+                        <Text style={styles.productCategoryLabel} numberOfLines={1}>
+                          {prod.subcategory || prod.category?.name || 'Hardware'}
                         </Text>
+
+                        {/* Title */}
+                        <Text style={styles.productTitle} numberOfLines={2}>
+                          {prod.name}
+                        </Text>
+
+                        {/* Added by / Seller */}
+                        <View style={styles.sellerRow}>
+                          <Store size={11} color="#64748b" />
+                          <Text style={styles.sellerNameText} numberOfLines={1}>
+                            By {sellerName}
+                          </Text>
+                        </View>
+
+                        {/* Pricing Row */}
+                        <View style={styles.productPriceRow}>
+                          <Text style={styles.productPrice}>${Number(prod.price).toFixed(2)}</Text>
+                          {hasDiscount && (
+                            <Text style={styles.productComparePrice}>
+                              ${Number(prod.compareAtPrice).toFixed(2)}
+                            </Text>
+                          )}
+                        </View>
+
+                        {/* Stock Status */}
+                        <View style={styles.inStockRow}>
+                          <CheckCircle2 size={11} color={prod.stock > 0 ? '#059669' : '#dc2626'} />
+                          <Text
+                            style={[
+                              styles.inStockText,
+                              prod.stock === 0 && { color: '#dc2626' },
+                            ]}
+                          >
+                            {prod.stock > 0
+                              ? prod.stock <= 5
+                                ? `Only ${prod.stock} left`
+                                : `In Stock (${prod.stock})`
+                              : 'Out of Stock'}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
           </>
         )}
 
@@ -721,12 +921,19 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     borderBottomLeftRadius: Radius.xl,
     borderBottomRightRadius: Radius.xl,
+    zIndex: 100,
+    elevation: 10,
   },
   headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  headerLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
   },
   greetingCol: {
     flex: 1,
@@ -753,7 +960,84 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: 14,
     height: 46,
+    position: 'relative',
+    zIndex: 101,
     ...Shadows.sm,
+  },
+  quickSearchPopup: {
+    position: 'absolute',
+    top: 52,
+    left: 0,
+    right: 0,
+    backgroundColor: '#ffffff',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
+    zIndex: 1000,
+    ...Shadows.floating,
+    elevation: 20,
+  },
+  quickSearchLoading: {
+    padding: 16,
+  },
+  quickSearchContent: {
+    paddingVertical: 2,
+  },
+  quickResultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    gap: 10,
+  },
+  quickResultIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickResultTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: NexoraColors.textPrimary,
+  },
+  quickResultSubtitle: {
+    fontSize: 11,
+    color: NexoraColors.textSecondary,
+    marginTop: 1,
+  },
+  viewAllSearchesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: '#f8fafc',
+    gap: 6,
+  },
+  viewAllSearchesText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: NexoraColors.primary,
+  },
+  noQuickMatchBox: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noQuickMatchText: {
+    fontSize: 12.5,
+    color: NexoraColors.textSecondary,
+    textAlign: 'center',
+  },
+  searchAllCatalogText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: NexoraColors.primary,
   },
   searchInput: {
     flex: 1,
