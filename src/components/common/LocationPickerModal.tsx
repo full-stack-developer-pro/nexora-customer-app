@@ -11,6 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import * as Location from 'expo-location';
 import {
   MapPin,
   Crosshair,
@@ -22,6 +23,7 @@ import {
   Trash2,
   ChevronRight,
   Sparkles,
+  SlidersHorizontal,
 } from 'lucide-react-native';
 import { NexoraColors, Radius, Shadows } from '@/constants/theme';
 import { useLocation, CustomerLocation } from '@/context/LocationContext';
@@ -38,6 +40,8 @@ export const LocationPickerModal: React.FC = () => {
   const {
     activeLocation,
     savedAddresses,
+    searchRadius,
+    setSearchRadius,
     isLocating,
     isLocationModalOpen,
     closeLocationModal,
@@ -85,12 +89,25 @@ export const LocationPickerModal: React.FC = () => {
     closeLocationModal();
   };
 
-  const handleSaveManualAddress = () => {
+  const handleSaveManualAddress = async () => {
     if (!city.trim() && !street.trim()) return;
 
     const formatted = [street.trim(), city.trim(), stateCode.trim(), zipCode.trim()]
       .filter(Boolean)
       .join(', ');
+
+    let lat = 30.7046;
+    let lng = 76.7179;
+
+    try {
+      const geo = await Location.geocodeAsync(`${street.trim()} ${city.trim()} ${stateCode.trim()} ${zipCode.trim()}`);
+      if (geo && geo.length > 0) {
+        lat = geo[0].latitude;
+        lng = geo[0].longitude;
+      }
+    } catch (e) {
+      console.warn('Geocoding error:', e);
+    }
 
     const newLoc: CustomerLocation = {
       id: `manual_${Date.now()}`,
@@ -101,9 +118,8 @@ export const LocationPickerModal: React.FC = () => {
       state: stateCode.trim(),
       zipCode: zipCode.trim(),
       country: 'United States',
-      // Approximate fallback coordinates
-      latitude: 37.7749,
-      longitude: -122.4194,
+      latitude: lat,
+      longitude: lng,
     };
 
     saveAddress(newLoc);
@@ -208,7 +224,40 @@ export const LocationPickerModal: React.FC = () => {
                   <ChevronRight size={18} color="#94a3b8" />
                 </TouchableOpacity>
 
-                {/* 2. Saved Addresses Section */}
+                {/* 2. Search & Dispatch Radius Section */}
+                <View style={styles.radiusContainer}>
+                  <View style={styles.radiusHeaderRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <SlidersHorizontal size={13} color={NexoraColors.primary} />
+                      <Text style={styles.sectionTitle}>MAX SERVICE RADIUS</Text>
+                    </View>
+                    <View style={styles.radiusActiveBadge}>
+                      <Text style={styles.radiusActiveBadgeText}>{searchRadius} miles</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.radiusSubtitle}>
+                    Only show certified pros and hardware supplies that dispatch to your location
+                  </Text>
+                  <View style={styles.radiusPillsRow}>
+                    {[5, 15, 25, 50].map((r) => {
+                      const isSel = searchRadius === r;
+                      return (
+                        <TouchableOpacity
+                          key={r}
+                          style={[styles.radiusPill, isSel && styles.radiusPillActive]}
+                          onPress={() => setSearchRadius(r)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[styles.radiusPillText, isSel && styles.radiusPillTextActive]}>
+                            {r} mi
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {/* 3. Saved Addresses Section */}
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>SAVED ADDRESSES</Text>
                   <Text style={styles.sectionBadge}>{savedAddresses.length}</Text>
@@ -664,6 +713,63 @@ const styles = StyleSheet.create({
   saveAddressBtnText: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#ffffff',
+  },
+  radiusContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: Radius.lg,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    ...Shadows.card,
+  },
+  radiusHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  radiusSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginBottom: 12,
+  },
+  radiusActiveBadge: {
+    backgroundColor: '#eef5fc',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  radiusActiveBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: NexoraColors.primary,
+  },
+  radiusPillsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  radiusPill: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: Radius.md,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radiusPillActive: {
+    backgroundColor: NexoraColors.primary,
+    borderColor: NexoraColors.primary,
+  },
+  radiusPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  radiusPillTextActive: {
     color: '#ffffff',
   },
 });

@@ -306,6 +306,7 @@ export const marketplaceService = {
           lat?: number;
           lng?: number;
           city?: string;
+          radius?: number;
           limit?: number;
         } = 6
   ): Promise<ServiceOffering[]> {
@@ -318,16 +319,24 @@ export const marketplaceService = {
       if (Array.isArray(data) && data.length > 0) {
         return data;
       }
-      // If filtering or searching, return whatever backend returned (even empty array) rather than synthetic defaults
+      // If filtering or searching or proximity querying, return backend array (even if empty) rather than synthetic defaults
       if (
         typeof limitOrParams === 'object' &&
-        (limitOrParams.search || limitOrParams.category || limitOrParams.pricingType || limitOrParams.sortBy)
+        (limitOrParams.search ||
+          limitOrParams.category ||
+          limitOrParams.pricingType ||
+          limitOrParams.sortBy ||
+          limitOrParams.lat ||
+          limitOrParams.city)
       ) {
         return Array.isArray(data) ? data : [];
       }
       return DEFAULT_SERVICES;
     } catch {
-      if (typeof limitOrParams === 'object' && (limitOrParams.search || limitOrParams.category)) {
+      if (
+        typeof limitOrParams === 'object' &&
+        (limitOrParams.search || limitOrParams.category || limitOrParams.lat || limitOrParams.city)
+      ) {
         return [];
       }
       return DEFAULT_SERVICES;
@@ -370,6 +379,7 @@ export const marketplaceService = {
           lat?: number;
           lng?: number;
           city?: string;
+          radius?: number;
           limit?: number;
         } = 6
   ): Promise<FeaturedProvider[]> {
@@ -382,8 +392,14 @@ export const marketplaceService = {
       if (Array.isArray(data) && data.length > 0) {
         return data;
       }
+      if (typeof limitOrParams === 'object' && (limitOrParams.lat || limitOrParams.city)) {
+        return Array.isArray(data) ? data : [];
+      }
       return DEFAULT_PROVIDERS;
     } catch {
+      if (typeof limitOrParams === 'object' && (limitOrParams.lat || limitOrParams.city)) {
+        return [];
+      }
       return DEFAULT_PROVIDERS;
     }
   },

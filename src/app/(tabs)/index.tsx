@@ -77,17 +77,19 @@ const renderCategoryIcon = (slug = '', color = '#ffffff', size = 22) => {
 const getTradeDisplayName = (slug = '', name = ''): string => {
   const s = (slug || '').toLowerCase();
   const n = (name || '').toLowerCase();
-  if (s.includes('plumb') || n.includes('plumb')) return 'Plumbing';
-  if (s.includes('electr') || n.includes('electr')) return 'Electrical';
-  if (s.includes('hvac') || n.includes('hvac') || n.includes('climate')) return 'HVAC';
-  if (s.includes('carpent') || n.includes('carpent') || n.includes('wood')) return 'Carpentry';
-  if (s.includes('paint') || n.includes('paint')) return 'Painting';
-  if (s.includes('roof') || n.includes('roof') || n.includes('gutter')) return 'Roofing';
+  if (s.includes('plumb') || s.includes('water') || n.includes('plumb') || n.includes('water')) return 'Plumbing';
+  if (s.includes('electr') || s.includes('wire') || n.includes('electr') || n.includes('wire')) return 'Electrical';
+  if (s.includes('hvac') || s.includes('climate') || s.includes('air') || n.includes('hvac') || n.includes('climate') || n.includes('air')) return 'HVAC';
+  if (s.includes('carpent') || s.includes('wood') || n.includes('carpent') || n.includes('wood')) return 'Carpentry';
+  if (s.includes('paint') || s.includes('finish') || n.includes('paint') || n.includes('finish')) return 'Painting';
+  if (s.includes('roof') || s.includes('gutter') || n.includes('roof') || n.includes('gutter')) return 'Roofing';
   if (s.includes('remodel') || s.includes('contract') || n.includes('remodel') || n.includes('contract')) return 'Remodeling';
   if (s.includes('clean') || n.includes('clean')) return 'Cleaning';
 
-  if (name.includes(' & ')) return name.split(' & ')[0].trim();
-  return name.trim();
+  if (name && name.includes(' & ')) return name.split(' & ')[0].trim();
+  if (name) return name.trim();
+  if (slug) return slug.split('-')[0];
+  return 'Service';
 };
 
 const getCategoryColor = (slug = '') => {
@@ -129,7 +131,7 @@ export default function CustomerHomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
-  const { activeLocation } = useLocation();
+  const { activeLocation, searchRadius, setSearchRadius, openLocationModal } = useLocation();
 
   const servicesScrollRef = React.useRef<any>(null);
   const providersScrollRef = React.useRef<any>(null);
@@ -224,6 +226,7 @@ export default function CustomerHomeScreen() {
         lat: activeLocation?.latitude,
         lng: activeLocation?.longitude,
         city: activeLocation?.city,
+        radius: searchRadius,
       };
 
       const [catData, servData, provData, prodData] = await Promise.all([
@@ -242,7 +245,7 @@ export default function CustomerHomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeLocation?.latitude, activeLocation?.longitude, activeLocation?.city]);
+  }, [activeLocation?.latitude, activeLocation?.longitude, activeLocation?.city, searchRadius]);
 
   useEffect(() => {
     loadMarketplaceData();
@@ -551,13 +554,35 @@ export default function CustomerHomeScreen() {
           </ScrollView>
         ) : displayedServices.length === 0 ? (
           <View style={styles.emptyServicesBox}>
-            <Wrench size={32} color="#94a3b8" />
-            <Text style={styles.emptyTitle}>No Services Available</Text>
+            <View style={styles.emptyIconCircle}>
+              <MapPin size={24} color={NexoraColors.primary} />
+            </View>
+            <Text style={styles.emptyTitle}>
+              No Pros Found Within {searchRadius} Miles
+            </Text>
             <Text style={styles.emptySub}>
               {selectedCategory !== 'all'
-                ? `No published services in ${sectionHeaderTitle.replace(' Services', '')} right now.`
-                : 'Verified local providers will list their services here soon.'}
+                ? `No published ${sectionHeaderTitle.replace(' Services', '')} services available within ${searchRadius} miles of ${activeLocation?.city || 'your area'}.`
+                : `We couldn't find active verified trade pros currently dispatching within ${searchRadius} miles of ${activeLocation?.city || 'your area'}.`}
             </Text>
+            <View style={styles.emptyActionRow}>
+              {searchRadius < 50 && (
+                <TouchableOpacity
+                  style={styles.expandRadiusBtn}
+                  onPress={() => setSearchRadius(50)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.expandRadiusBtnText}>Expand Search to 50 mi</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.changeLocationBtn}
+                onPress={openLocationModal}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.changeLocationBtnText}>Change Location</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <ScrollView
@@ -1255,24 +1280,64 @@ const styles = StyleSheet.create({
   emptyServicesBox: {
     backgroundColor: '#ffffff',
     borderRadius: Radius.lg,
-    padding: 32,
+    padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     marginBottom: 20,
+    ...Shadows.card,
+  },
+  emptyIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#eef5fc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   emptyTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     color: NexoraColors.textPrimary,
-    marginTop: 8,
+    marginTop: 4,
+    textAlign: 'center',
   },
   emptySub: {
     fontSize: 12,
     color: NexoraColors.textMuted,
     textAlign: 'center',
     marginTop: 4,
+    maxWidth: 290,
+    lineHeight: 18,
+  },
+  emptyActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+  },
+  expandRadiusBtn: {
+    backgroundColor: NexoraColors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: Radius.md,
+  },
+  expandRadiusBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  changeLocationBtn: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: Radius.md,
+  },
+  changeLocationBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
   },
   servicesSliderContent: {
     gap: SERVICE_CARD_GAP,

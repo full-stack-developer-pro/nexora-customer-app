@@ -21,6 +21,7 @@ export interface CustomerLocation {
 interface LocationContextType {
   activeLocation: CustomerLocation | null;
   savedAddresses: CustomerLocation[];
+  searchRadius: number;
   isLocating: boolean;
   permissionStatus: 'undetermined' | 'granted' | 'denied';
   isLocationModalOpen: boolean;
@@ -28,12 +29,14 @@ interface LocationContextType {
   closeLocationModal: () => void;
   requestCurrentLocation: () => Promise<CustomerLocation | null>;
   setActiveLocation: (loc: CustomerLocation) => Promise<void>;
+  setSearchRadius: (radius: number) => Promise<void>;
   saveAddress: (loc: CustomerLocation) => Promise<void>;
   deleteAddress: (id: string) => Promise<void>;
 }
 
 const STORAGE_ACTIVE_LOCATION_KEY = '@nexora_customer_active_location';
 const STORAGE_SAVED_ADDRESSES_KEY = '@nexora_customer_saved_addresses';
+const STORAGE_SEARCH_RADIUS_KEY = '@nexora_customer_search_radius';
 
 // Helper to verify 24-char hex MongoDB ObjectId
 const isMongoId = (id?: string): boolean => Boolean(id && /^[0-9a-fA-F]{24}$/.test(id));
@@ -58,6 +61,7 @@ const LocationContext = createContext<LocationContextType | null>(null);
 export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeLocation, setActiveLocationState] = useState<CustomerLocation | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<CustomerLocation[]>([]);
+  const [searchRadius, setSearchRadiusState] = useState<number>(25);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [permissionStatus, setPermissionStatus] = useState<'undetermined' | 'granted' | 'denied'>('undetermined');
   const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
@@ -66,10 +70,16 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const loadCachedLocation = async () => {
       try {
-        const [savedActive, savedList] = await Promise.all([
+        const [savedActive, savedList, savedRadius] = await Promise.all([
           AsyncStorage.getItem(STORAGE_ACTIVE_LOCATION_KEY),
           AsyncStorage.getItem(STORAGE_SAVED_ADDRESSES_KEY),
+          AsyncStorage.getItem(STORAGE_SEARCH_RADIUS_KEY),
         ]);
+
+        if (savedRadius) {
+          const parsed = parseInt(savedRadius, 10);
+          if (!isNaN(parsed) && parsed > 0) setSearchRadiusState(parsed);
+        }
 
         if (savedActive) {
           try {
@@ -247,6 +257,16 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  // Set search radius & persist
+  const setSearchRadius = async (radius: number): Promise<void> => {
+    setSearchRadiusState(radius);
+    try {
+      await AsyncStorage.setItem(STORAGE_SEARCH_RADIUS_KEY, String(radius));
+    } catch (e) {
+      console.warn('Error saving search radius:', e);
+    }
+  };
+
   // Save an address to saved list and sync with backend
   const saveAddress = async (loc: CustomerLocation): Promise<void> => {
     const updated = [
@@ -321,6 +341,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       value={{
         activeLocation,
         savedAddresses,
+        searchRadius,
         isLocating,
         permissionStatus,
         isLocationModalOpen,
@@ -328,6 +349,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         closeLocationModal,
         requestCurrentLocation,
         setActiveLocation,
+        setSearchRadius,
         saveAddress,
         deleteAddress,
       }}

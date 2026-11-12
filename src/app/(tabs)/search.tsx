@@ -121,7 +121,7 @@ export default function BrowseScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string; category?: string; openFilter?: string; tab?: string }>();
-  const { activeLocation } = useLocation();
+  const { activeLocation, searchRadius, setSearchRadius, openLocationModal } = useLocation();
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -258,6 +258,7 @@ export default function BrowseScreen() {
           lat: activeLocation?.latitude,
           lng: activeLocation?.longitude,
           city: activeLocation?.city,
+          radius: searchRadius,
           limit: 30,
         }),
         marketplaceService.getProducts({
@@ -289,6 +290,7 @@ export default function BrowseScreen() {
     activeLocation?.latitude,
     activeLocation?.longitude,
     activeLocation?.city,
+    searchRadius,
   ]);
 
   // Trigger backend query when any filter or debounced search changes
