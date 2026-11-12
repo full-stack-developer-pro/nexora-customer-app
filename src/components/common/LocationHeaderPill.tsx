@@ -17,11 +17,11 @@ export const LocationHeaderPill: React.FC<LocationHeaderPillProps> = ({
 }) => {
   const { activeLocation, openLocationModal } = useLocation();
 
-  const displayTitle = activeLocation?.label || 'Home';
+  const displayTitle = activeLocation?.label || (activeLocation ? 'Home' : 'Set Location');
   const displaySubtitle =
     activeLocation?.formattedAddress ||
     [activeLocation?.street, activeLocation?.city].filter(Boolean).join(', ') ||
-    'Select your address';
+    'Tap to select your address';
 
   if (compact) {
     return (

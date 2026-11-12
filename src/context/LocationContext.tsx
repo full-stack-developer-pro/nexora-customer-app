@@ -85,20 +85,20 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           try {
             setActiveLocationState(JSON.parse(savedActive));
           } catch {
-            setActiveLocationState(DEFAULT_FALLBACK_LOCATION);
+            setActiveLocationState(null);
           }
         } else {
-          setActiveLocationState(DEFAULT_FALLBACK_LOCATION);
+          setActiveLocationState(null);
         }
 
         if (savedList) {
           try {
             setSavedAddresses(JSON.parse(savedList));
           } catch {
-            setSavedAddresses([DEFAULT_FALLBACK_LOCATION]);
+            setSavedAddresses([]);
           }
         } else {
-          setSavedAddresses([DEFAULT_FALLBACK_LOCATION]);
+          setSavedAddresses([]);
         }
 
         // Try syncing from backend if user is signed in
@@ -144,7 +144,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       } catch (err) {
         console.warn('Error loading cached location:', err);
-        setActiveLocationState(DEFAULT_FALLBACK_LOCATION);
+        setActiveLocationState(null);
       }
     };
 
