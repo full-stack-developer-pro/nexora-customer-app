@@ -36,6 +36,9 @@ export interface ServiceOffering {
     state?: string;
     isVerified?: boolean;
   };
+  distanceMiles?: number | null;
+  distanceLabel?: string;
+  isCovered?: boolean;
 }
 
 export interface FeaturedProvider {
@@ -53,6 +56,8 @@ export interface FeaturedProvider {
   state: string;
   verified: boolean;
   hourlyRate?: number;
+  distanceMiles?: number | null;
+  distanceLabel?: string;
 }
 
 export interface MarketplaceProduct {
@@ -288,7 +293,7 @@ export const marketplaceService = {
   },
 
   /**
-   * Fetch services (featured or filtered with search / category / pricingType / sortBy)
+   * Fetch services (featured or filtered with search / category / pricingType / sortBy / proximity)
    */
   async getFeaturedServices(
     limitOrParams:
@@ -298,6 +303,9 @@ export const marketplaceService = {
           category?: string;
           pricingType?: string;
           sortBy?: string;
+          lat?: number;
+          lng?: number;
+          city?: string;
           limit?: number;
         } = 6
   ): Promise<ServiceOffering[]> {
@@ -353,12 +361,22 @@ export const marketplaceService = {
   },
 
   /**
-   * Fetch top-rated local providers spotlight
+   * Fetch top-rated local providers spotlight (with proximity sorting)
    */
-  async getFeaturedProviders(limit = 6): Promise<FeaturedProvider[]> {
+  async getFeaturedProviders(
+    limitOrParams:
+      | number
+      | {
+          lat?: number;
+          lng?: number;
+          city?: string;
+          limit?: number;
+        } = 6
+  ): Promise<FeaturedProvider[]> {
     try {
+      const params = typeof limitOrParams === 'number' ? { limit: limitOrParams } : limitOrParams;
       const res: any = await apiClient.get('/providers/featured', {
-        params: { limit },
+        params,
       });
       const data = res?.data;
       if (Array.isArray(data) && data.length > 0) {

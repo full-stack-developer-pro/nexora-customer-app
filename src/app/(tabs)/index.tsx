@@ -37,8 +37,10 @@ import {
   PhoneCall,
   Award,
   ArrowRight,
+  MapPin,
 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
+import { useLocation } from '@/context/LocationContext';
 import { NexoraColors, Radius, Shadows } from '@/constants/theme';
 import { NexoraLogo } from '@/components/common/NexoraLogo';
 import { LocationHeaderPill } from '@/components/common/LocationHeaderPill';
@@ -127,6 +129,7 @@ export default function CustomerHomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const { activeLocation } = useLocation();
 
   const servicesScrollRef = React.useRef<any>(null);
   const providersScrollRef = React.useRef<any>(null);
@@ -154,7 +157,13 @@ export default function CustomerHomeScreen() {
       setIsSearchingQuick(true);
       try {
         const [servs, prods] = await Promise.all([
-          marketplaceService.getFeaturedServices({ search: searchQuery.trim(), limit: 2 }),
+          marketplaceService.getFeaturedServices({
+            search: searchQuery.trim(),
+            limit: 2,
+            lat: activeLocation?.latitude,
+            lng: activeLocation?.longitude,
+            city: activeLocation?.city,
+          }),
           marketplaceService.getProducts({ search: searchQuery.trim(), limit: 2 }),
         ]);
         setQuickServices(servs.slice(0, 2));
@@ -167,7 +176,7 @@ export default function CustomerHomeScreen() {
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, activeLocation?.latitude, activeLocation?.longitude, activeLocation?.city]);
 
   const handleNavigateToSearch = (query = searchQuery.trim()) => {
     setIsSearchFocused(false);
@@ -211,10 +220,16 @@ export default function CustomerHomeScreen() {
 
   const loadMarketplaceData = useCallback(async () => {
     try {
+      const geoParams = {
+        lat: activeLocation?.latitude,
+        lng: activeLocation?.longitude,
+        city: activeLocation?.city,
+      };
+
       const [catData, servData, provData, prodData] = await Promise.all([
         marketplaceService.getCategories(),
-        marketplaceService.getFeaturedServices(6),
-        marketplaceService.getFeaturedProviders(6),
+        marketplaceService.getFeaturedServices({ limit: 6, ...geoParams }),
+        marketplaceService.getFeaturedProviders({ limit: 6, ...geoParams }),
         marketplaceService.getProducts(6),
       ]);
       setCategories(catData);
@@ -227,7 +242,7 @@ export default function CustomerHomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [activeLocation?.latitude, activeLocation?.longitude, activeLocation?.city]);
 
   useEffect(() => {
     loadMarketplaceData();
@@ -615,7 +630,14 @@ export default function CustomerHomeScreen() {
                           <Text style={styles.ratingText}>
                             {Number(ratingVal).toFixed(1)}
                           </Text>
-                          <Text style={styles.reviewsCountText}>({reviewCountVal} reviews)</Text>
+                          {service.distanceLabel ? (
+                            <View style={styles.distanceBadge}>
+                              <MapPin size={10} color="#084e8a" />
+                              <Text style={styles.distanceBadgeText}>{service.distanceLabel}</Text>
+                            </View>
+                          ) : (
+                            <Text style={styles.reviewsCountText}>({reviewCountVal} reviews)</Text>
+                          )}
                         </View>
                       </View>
 
@@ -721,7 +743,9 @@ export default function CustomerHomeScreen() {
                     {/* Bottom: Stats & Action */}
                     <View style={styles.proStatsRow}>
                       <Text style={styles.proStatsText}>{pro.completedJobs}+ jobs completed</Text>
-                      <Text style={styles.proLocationText}>• {pro.city}, {pro.state}</Text>
+                      <Text style={styles.proLocationText}>
+                        • {pro.distanceLabel || `${pro.city}, ${pro.state}`}
+                      </Text>
                     </View>
 
                     <TouchableOpacity style={styles.proHireBtn} activeOpacity={0.85}>
@@ -1365,6 +1389,20 @@ const styles = StyleSheet.create({
   reviewsCountText: {
     fontSize: 11,
     color: '#94a3b8',
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#eef5fc',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  distanceBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: NexoraColors.primary,
   },
   bookButton: {
     backgroundColor: NexoraColors.primary,

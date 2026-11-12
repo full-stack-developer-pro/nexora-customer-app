@@ -44,7 +44,9 @@ import {
   Clock,
   Layers,
   ArrowRight,
+  MapPin,
 } from 'lucide-react-native';
+import { useLocation } from '@/context/LocationContext';
 import { NexoraColors, Radius, Shadows } from '@/constants/theme';
 import { LocationHeaderPill } from '@/components/common/LocationHeaderPill';
 import {
@@ -119,6 +121,7 @@ export default function BrowseScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string; category?: string; openFilter?: string; tab?: string }>();
+  const { activeLocation } = useLocation();
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -252,6 +255,9 @@ export default function BrowseScreen() {
           category: activeTab === 'services' ? categoryParam : undefined,
           pricingType: pricingTypeFilter !== 'all' ? pricingTypeFilter : undefined,
           sortBy: sortByParam,
+          lat: activeLocation?.latitude,
+          lng: activeLocation?.longitude,
+          city: activeLocation?.city,
           limit: 30,
         }),
         marketplaceService.getProducts({
@@ -272,7 +278,18 @@ export default function BrowseScreen() {
       setIsQuerying(false);
       setRefreshing(false);
     }
-  }, [debouncedSearch, activeTab, selectedTrade, activeCategoryFilters, pricingTypeFilter, inStockOnly, sortOption]);
+  }, [
+    debouncedSearch,
+    activeTab,
+    selectedTrade,
+    activeCategoryFilters,
+    pricingTypeFilter,
+    inStockOnly,
+    sortOption,
+    activeLocation?.latitude,
+    activeLocation?.longitude,
+    activeLocation?.city,
+  ]);
 
   // Trigger backend query when any filter or debounced search changes
   useEffect(() => {
@@ -458,7 +475,14 @@ export default function BrowseScreen() {
               <View style={styles.ratingRow}>
                 <Star size={12} color="#f59e0b" fill="#f59e0b" />
                 <Text style={styles.ratingNumber}>{ratingVal.toFixed(1)}</Text>
-                <Text style={styles.reviewCount}>({reviewCountVal} reviews)</Text>
+                {item.distanceLabel ? (
+                  <View style={styles.distanceBadge}>
+                    <MapPin size={10} color={NexoraColors.primary} />
+                    <Text style={styles.distanceBadgeText}>{item.distanceLabel}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.reviewCount}>({reviewCountVal} reviews)</Text>
+                )}
               </View>
             </View>
           </View>
@@ -1326,6 +1350,20 @@ const styles = StyleSheet.create({
   reviewCount: {
     fontSize: 10.5,
     color: '#94a3b8',
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#eef5fc',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  distanceBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: NexoraColors.primary,
   },
   bookButton: {
     flexDirection: 'row',
