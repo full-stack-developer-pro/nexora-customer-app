@@ -9,14 +9,13 @@ import {
   ScrollView,
   Image,
   RefreshControl,
-  ActivityIndicator,
   Modal,
   TouchableWithoutFeedback,
   Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import {
   Search,
@@ -29,7 +28,6 @@ import {
   Store,
   Tag,
   Package,
-  ArrowUpDown,
   RotateCcw,
   Sparkles,
   Droplets,
@@ -120,9 +118,8 @@ const getTradeDisplayName = (slug = '', name = '') => {
 
 export default function BrowseScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const params = useLocalSearchParams<{ q?: string; category?: string; openFilter?: string; tab?: string }>();
-  const { activeLocation, searchRadius, setSearchRadius, openLocationModal } = useLocation();
+  const { activeLocation, searchRadius } = useLocation();
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,7 +145,7 @@ export default function BrowseScreen() {
     if (params.openFilter === 'true') {
       setFilterModalVisible(true);
     }
-  }, [params.q, params.category, params.tab, params.openFilter]);
+  }, [params.q, params.category, params.tab, params.openFilter, searchQuery, selectedTrade]);
 
   // Advanced Filters
   const [pricingTypeFilter, setPricingTypeFilter] = useState<'all' | 'hourly' | 'fixed'>('all');
@@ -309,7 +306,7 @@ export default function BrowseScreen() {
       ]);
       if (servCats?.length) setServiceCategories(servCats);
       if (prodCats?.length) setProductCategories(prodCats);
-    } catch {}
+    } catch { }
     fetchFromBackend();
   }, [fetchFromBackend]);
 
@@ -380,7 +377,7 @@ export default function BrowseScreen() {
         }
         return 0; // recommended
       });
-  }, [services, searchQuery, selectedTrade, pricingTypeFilter, minRating, sortOption]);
+  }, [services, searchQuery, selectedTrade, activeCategoryFilters, pricingTypeFilter, minRating, sortOption]);
 
   // Filtered & Sorted Products
   const filteredProducts = useMemo(() => {
@@ -417,34 +414,58 @@ export default function BrowseScreen() {
         if (sortOption === 'price_desc') return b.price - a.price;
         return 0;
       });
-  }, [products, searchQuery, selectedTrade, inStockOnly, sortOption]);
+  }, [products, searchQuery, selectedTrade, activeCategoryFilters, inStockOnly, sortOption]);
 
   const customerLat = activeLocation?.latitude || 30.7138;
   const customerLng = activeLocation?.longitude || 76.6896;
   const customerCity = activeLocation?.city || 'Your Location';
 
   const mapHtml = useMemo(() => {
-    const markers = filteredServices
+    const serviceMarkersJs = filteredServices
       .map((s, idx) => {
-        const lat =
+        let lat =
+          (s as any).coordinates?.lat ||
           (s as any).serviceLocation?.coordinates?.lat ||
-          customerLat + (idx === 0 ? 0.012 : idx === 1 ? -0.012 : 0.02);
-        const lng =
+          (s as any).serviceLocation?.coordinates?.[1];
+        let lng =
+          (s as any).coordinates?.lng ||
           (s as any).serviceLocation?.coordinates?.lng ||
-          customerLng + (idx === 0 ? 0.012 : idx === 1 ? -0.012 : 0.02);
+          (s as any).serviceLocation?.coordinates?.[0];
+
+        if (!lat || !lng) {
+          lat = customerLat + (idx === 0 ? 0.008 : idx === 1 ? -0.008 : idx === 2 ? 0.015 : -0.014);
+          lng = customerLng + (idx === 0 ? 0.011 : idx === 1 ? -0.012 : idx === 2 ? -0.015 : 0.016);
+        }
+
         const price = s.pricingType === 'hourly' ? `$${s.price}/hr` : `$${s.price}`;
-        const titleEscaped = (s.title || '').replace(/'/g, "\\'");
+        const titleEscaped = (s.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const dist = s.distanceLabel || '';
+        const provName = (s.provider?.businessName || s.provider?.name || 'Verified Pro').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
         return `
-          var m${idx} = L.marker([${lat}, ${lng}], {
-            icon: L.divIcon({
-              className: '',
-              html: '<div class="price-bubble">${price}</div>',
-              iconSize: [64, 26],
-              iconAnchor: [32, 13]
-            })
-          }).addTo(map);
-          m${idx}.bindPopup('<b>${titleEscaped}</b><br><span style="color:#084e8a;font-weight:700">${price}</span> • ${dist}');
+          (function() {
+            var pos = new google.maps.LatLng(${lat}, ${lng});
+            bounds.extend(pos);
+            var overlay = new PriceOverlay(
+              pos,
+              '<div class="price-bubble">${price}</div>',
+              function() {
+                infoWindow.setContent(
+                  '<div class="iw-card">' +
+                    '<div class="iw-title">${titleEscaped}</div>' +
+                    '<div class="iw-prov">${provName}</div>' +
+                    '<div class="iw-meta">' +
+                      '<span class="iw-price">${price}</span>' +
+                      '${dist ? `<span class="iw-dist">• ${dist}</span>` : ''}' +
+                    '</div>' +
+                  '</div>'
+                );
+                infoWindow.setPosition(pos);
+                infoWindow.open(map);
+              }
+            );
+            overlay.setMap(map);
+          })();
         `;
       })
       .join('\n');
@@ -453,41 +474,179 @@ export default function BrowseScreen() {
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
-          body, html, #map { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, system-ui, sans-serif; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          html, body, #map {
+            width: 100%;
+            height: 100%;
+            background-color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          }
           .price-bubble {
             background: #084e8a;
             color: #ffffff;
             font-weight: 800;
-            font-size: 11px;
-            padding: 4px 8px;
-            border-radius: 14px;
+            font-size: 11.5px;
+            padding: 5px 10px;
+            border-radius: 16px;
             border: 2px solid #ffffff;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            text-align: center;
+            box-shadow: 0 4px 12px rgba(8, 78, 138, 0.35);
+            cursor: pointer;
             white-space: nowrap;
+            text-align: center;
+            transition: transform 0.15s ease, background 0.15s ease;
+            user-select: none;
           }
-          .user-pin {
+          .price-bubble:hover, .price-bubble:active {
+            background: #042f56;
+            transform: scale(1.1);
+          }
+          .user-pin-wrapper {
+            position: relative;
+            width: 20px;
+            height: 20px;
+          }
+          .user-pin-dot {
             width: 14px;
             height: 14px;
             background: #0ea5e9;
-            border: 3px solid #ffffff;
+            border: 2.5px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 12px #0ea5e9;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            position: absolute;
+            top: 3px;
+            left: 3px;
+          }
+          .user-pin-pulse {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            top: -6px;
+            left: -6px;
+            border-radius: 50%;
+            background: rgba(14, 165, 233, 0.3);
+            animation: userPulse 2s infinite ease-out;
+          }
+          @keyframes userPulse {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.4); opacity: 0; }
+          }
+          .gm-style .gm-style-iw-c {
+            border-radius: 14px !important;
+            padding: 12px 14px !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
+            max-width: 240px !important;
+          }
+          .gm-style .gm-style-iw-d {
+            overflow: hidden !important;
+          }
+          .iw-card {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          }
+          .iw-title {
+            font-weight: 800;
+            font-size: 13px;
+            color: #0f172a;
+            line-height: 17px;
+            margin-bottom: 3px;
+          }
+          .iw-prov {
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 6px;
+            font-weight: 500;
+          }
+          .iw-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .iw-price {
+            font-size: 13px;
+            font-weight: 800;
+            color: #084e8a;
+          }
+          .iw-dist {
+            font-size: 11px;
+            color: #059669;
+            font-weight: 700;
           }
         </style>
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAGeP0s481plfCUamvgq-K2TclHOqMb5qY"></script>
       </head>
       <body>
         <div id="map"></div>
         <script>
-          var map = L.map('map', { zoomControl: false }).setView([${customerLat}, ${customerLng}], 12);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-          var userIcon = L.divIcon({ className: '', html: '<div class="user-pin"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
-          L.marker([${customerLat}, ${customerLng}], { icon: userIcon }).addTo(map).bindPopup('<b>Your Location</b><br>${customerCity}');
-          ${markers}
+          function initMap() {
+            var centerPos = new google.maps.LatLng(${customerLat}, ${customerLng});
+            var map = new google.maps.Map(document.getElementById('map'), {
+              center: centerPos,
+              zoom: 13,
+              disableDefaultUI: true,
+              zoomControl: false,
+              mapTypeControl: false,
+              streetViewControl: false,
+              fullscreenControl: false,
+              gestureHandling: 'greedy'
+            });
+
+            var infoWindow = new google.maps.InfoWindow();
+            var bounds = new google.maps.LatLngBounds();
+            bounds.extend(centerPos);
+
+            function PriceOverlay(position, html, onClick) {
+              this.position = position;
+              this.html = html;
+              this.onClick = onClick;
+            }
+            PriceOverlay.prototype = new google.maps.OverlayView();
+            PriceOverlay.prototype.onAdd = function() {
+              var div = document.createElement('div');
+              div.style.position = 'absolute';
+              div.innerHTML = this.html;
+              if (this.onClick) div.addEventListener('click', this.onClick);
+              this.div = div;
+              this.getPanes().overlayMouseTarget.appendChild(div);
+            };
+            PriceOverlay.prototype.draw = function() {
+              var projection = this.getProjection();
+              if (!projection || !this.div) return;
+              var p = projection.fromLatLngToDivPixel(this.position);
+              if (p) {
+                this.div.style.left = (p.x - this.div.offsetWidth / 2) + 'px';
+                this.div.style.top = (p.y - this.div.offsetHeight / 2) + 'px';
+              }
+            };
+            PriceOverlay.prototype.onRemove = function() {
+              if (this.div && this.div.parentNode) {
+                this.div.parentNode.removeChild(this.div);
+                this.div = null;
+              }
+            };
+
+            var userOverlay = new PriceOverlay(
+              centerPos,
+              '<div class="user-pin-wrapper"><div class="user-pin-pulse"></div><div class="user-pin-dot"></div></div>',
+              function() {
+                infoWindow.setContent(
+                  '<div class="iw-card"><div class="iw-title">Your Location</div><div class="iw-prov">${customerCity}</div></div>'
+                );
+                infoWindow.setPosition(centerPos);
+                infoWindow.open(map);
+              }
+            );
+            userOverlay.setMap(map);
+
+            ${serviceMarkersJs}
+          }
+
+          if (window.google && window.google.maps) {
+            initMap();
+          } else {
+            window.onload = initMap;
+          }
         </script>
       </body>
       </html>
@@ -510,13 +669,23 @@ export default function BrowseScreen() {
     return (
       <View style={styles.serviceCard}>
         <View style={styles.serviceImageRow}>
-          {primaryImgUrl ? (
-            <Image source={{ uri: primaryImgUrl }} style={styles.serviceThumbnail} resizeMode="cover" />
-          ) : (
-            <View style={styles.serviceThumbnailPlaceholder}>
-              <Wrench size={24} color="#94a3b8" />
-            </View>
-          )}
+          <View style={styles.thumbnailContainer}>
+            {primaryImgUrl ? (
+              <Image source={{ uri: primaryImgUrl }} style={styles.serviceThumbnail} resizeMode="cover" />
+            ) : (
+              <View style={styles.serviceThumbnailPlaceholder}>
+                <Wrench size={24} color="#94a3b8" />
+              </View>
+            )}
+            {item.distanceLabel ? (
+              <View style={styles.thumbnailDistanceBadge}>
+                <MapPin size={9} color="#084e8a" />
+                <Text style={styles.thumbnailDistanceText} numberOfLines={1}>
+                  {item.distanceLabel.includes('•') ? item.distanceLabel.split('•')[0].trim() : item.distanceLabel}
+                </Text>
+              </View>
+            ) : null}
+          </View>
 
           <View style={styles.serviceMeta}>
             <View style={styles.categoryAndPriceRow}>
@@ -554,14 +723,12 @@ export default function BrowseScreen() {
               <View style={styles.ratingRow}>
                 <Star size={12} color="#f59e0b" fill="#f59e0b" />
                 <Text style={styles.ratingNumber}>{ratingVal.toFixed(1)}</Text>
-                {item.distanceLabel ? (
-                  <View style={styles.distanceBadge}>
-                    <MapPin size={10} color={NexoraColors.primary} />
-                    <Text style={styles.distanceBadgeText}>{item.distanceLabel}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.reviewCount}>({reviewCountVal} reviews)</Text>
-                )}
+                <Text style={styles.reviewCount}>({reviewCountVal} reviews)</Text>
+                {item.distanceLabel && item.distanceLabel.includes('•') ? (
+                  <Text style={styles.inlineEtaBadge} numberOfLines={1}>
+                    • {item.distanceLabel.split('•')[1].trim()}
+                  </Text>
+                ) : null}
               </View>
             </View>
           </View>
@@ -762,6 +929,34 @@ export default function BrowseScreen() {
         />
       </View>
 
+      {/* Top Segmented Mode Switcher (List vs Map) - Placed at Top of Services */}
+      {activeTab === 'services' && !loading && !isQuerying && (
+        <View style={styles.listTopToggleWrap}>
+          <View style={styles.viewTogglePill}>
+            <TouchableOpacity
+              style={[styles.viewTogglePillBtn, viewMode === 'list' && styles.viewTogglePillBtnActive]}
+              onPress={() => setViewMode('list')}
+              activeOpacity={0.85}
+            >
+              <Layers size={13} color={viewMode === 'list' ? '#ffffff' : '#64748b'} />
+              <Text style={[styles.viewTogglePillText, viewMode === 'list' && styles.viewTogglePillTextActive]}>
+                List View
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewTogglePillBtn, viewMode === 'map' && styles.viewTogglePillBtnActive]}
+              onPress={() => setViewMode('map')}
+              activeOpacity={0.85}
+            >
+              <MapPin size={13} color={viewMode === 'map' ? '#ffffff' : '#64748b'} />
+              <Text style={[styles.viewTogglePillText, viewMode === 'map' && styles.viewTogglePillTextActive]}>
+                Map View
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Main Results List with Shimmer Skeleton States */}
       {loading || isQuerying ? (
         <View
@@ -791,8 +986,9 @@ export default function BrowseScreen() {
               style={styles.mapWebView}
               originWhitelist={['*']}
             />
+
             {/* Bottom Floating Snap Preview Carousel */}
-            <View style={[styles.mapBottomCarousel, { bottom: Math.max(insets.bottom, 12) + 85 }]}>
+            <View style={[styles.mapBottomCarousel, { bottom: Math.max(insets.bottom, 12) + 20 }]}>
               <FlatList
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -890,32 +1086,6 @@ export default function BrowseScreen() {
             </View>
           }
         />
-      )}
-
-      {/* Floating Mode Switcher (List vs Map) - Airbnb / Thumbtack style */}
-      {activeTab === 'services' && (
-        <View style={[styles.floatingViewToggle, { bottom: Math.max(insets.bottom, 12) + 20 }]}>
-          <TouchableOpacity
-            style={[styles.viewTogglePillBtn, viewMode === 'list' && styles.viewTogglePillBtnActive]}
-            onPress={() => setViewMode('list')}
-            activeOpacity={0.85}
-          >
-            <Layers size={13} color={viewMode === 'list' ? '#ffffff' : '#64748b'} />
-            <Text style={[styles.viewTogglePillText, viewMode === 'list' && styles.viewTogglePillTextActive]}>
-              List
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.viewTogglePillBtn, viewMode === 'map' && styles.viewTogglePillBtnActive]}
-            onPress={() => setViewMode('map')}
-            activeOpacity={0.85}
-          >
-            <MapPin size={13} color={viewMode === 'map' ? '#ffffff' : '#64748b'} />
-            <Text style={[styles.viewTogglePillText, viewMode === 'map' && styles.viewTogglePillTextActive]}>
-              Map View
-            </Text>
-          </TouchableOpacity>
-        </View>
       )}
 
       {/* Advanced Filter Modal Sheet */}
@@ -2109,24 +2279,62 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '700',
   },
-  floatingViewToggle: {
+  topMapToggleWrap: {
     position: 'absolute',
-    alignSelf: 'center',
+    top: 12,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 99,
+  },
+  listTopToggleWrap: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  viewTogglePill: {
     flexDirection: 'row',
     backgroundColor: '#ffffff',
     borderRadius: Radius.full,
-    padding: 4,
+    padding: 3,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     ...Shadows.floating,
-    zIndex: 999,
+  },
+  thumbnailContainer: {
+    position: 'relative',
+  },
+  thumbnailDistanceBadge: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.85)',
+    ...Shadows.sm,
+  },
+  thumbnailDistanceText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: NexoraColors.primary,
+  },
+  inlineEtaBadge: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#059669',
   },
   viewTogglePillBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: Radius.full,
   },
   viewTogglePillBtnActive: {

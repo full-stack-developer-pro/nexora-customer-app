@@ -9,7 +9,6 @@ import {
   RefreshControl,
   Image,
   Dimensions,
-  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,10 +31,7 @@ import {
   ChevronLeft,
   Flame,
   Store,
-  Tag,
-  AlertTriangle,
   PhoneCall,
-  Award,
   ArrowRight,
   MapPin,
 } from 'lucide-react-native';
@@ -609,13 +605,22 @@ export default function CustomerHomeScreen() {
 
               return (
                 <View key={service._id} style={styles.serviceSlideCard}>
-                  {primaryImgUrl ? (
-                    <Image source={{ uri: primaryImgUrl }} style={styles.serviceThumbnail} resizeMode="cover" />
-                  ) : (
-                    <View style={styles.serviceThumbnailPlaceholder}>
-                      <Wrench size={28} color="#94a3b8" />
-                    </View>
-                  )}
+                  {/* Thumbnail with floating Distance & ETA Pill */}
+                  <View style={styles.serviceImageContainer}>
+                    {primaryImgUrl ? (
+                      <Image source={{ uri: primaryImgUrl }} style={styles.serviceThumbnail} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.serviceThumbnailPlaceholder}>
+                        <Wrench size={28} color="#94a3b8" />
+                      </View>
+                    )}
+                    {service.distanceLabel ? (
+                      <View style={styles.imageDistanceBadge}>
+                        <MapPin size={10} color="#084e8a" />
+                        <Text style={styles.imageDistanceBadgeText}>{service.distanceLabel}</Text>
+                      </View>
+                    ) : null}
+                  </View>
 
                   <View style={styles.serviceBody}>
                     {/* Category Pill + Price */}
@@ -644,7 +649,7 @@ export default function CustomerHomeScreen() {
                         </Text>
                       </View>
                       <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 15 }}>
                           <Text style={styles.providerNameText} numberOfLines={1}>
                             {service.provider?.businessName || service.provider?.name || 'Certified Specialist'}
                           </Text>
@@ -655,14 +660,7 @@ export default function CustomerHomeScreen() {
                           <Text style={styles.ratingText}>
                             {Number(ratingVal).toFixed(1)}
                           </Text>
-                          {service.distanceLabel ? (
-                            <View style={styles.distanceBadge}>
-                              <MapPin size={10} color="#084e8a" />
-                              <Text style={styles.distanceBadgeText}>{service.distanceLabel}</Text>
-                            </View>
-                          ) : (
-                            <Text style={styles.reviewsCountText}>({reviewCountVal} reviews)</Text>
-                          )}
+                          <Text style={styles.reviewsCountText}>({reviewCountVal} reviews)</Text>
                         </View>
                       </View>
 
@@ -765,12 +763,21 @@ export default function CustomerHomeScreen() {
                       <Text style={styles.proTradeBadgeText} numberOfLines={1}>{pro.trade}</Text>
                     </View>
 
-                    {/* Bottom: Stats & Action */}
-                    <View style={styles.proStatsRow}>
-                      <Text style={styles.proStatsText}>{pro.completedJobs}+ jobs completed</Text>
-                      <Text style={styles.proLocationText}>
-                        • {pro.distanceLabel || `${pro.city}, ${pro.state}`}
-                      </Text>
+                    {/* Bottom: Stats & Location (Stacked to prevent boundary collision) */}
+                    <View style={styles.proMetaStack}>
+                      <View style={styles.proMetaRow}>
+                        <CheckCircle2 size={11} color="#059669" />
+                        <Text style={styles.proStatsText}>{pro.completedJobs}+ jobs completed</Text>
+                      </View>
+                      <View style={styles.proMetaRow}>
+                        <MapPin size={11} color={pro.distanceLabel ? NexoraColors.primary : '#64748b'} />
+                        <Text
+                          style={[styles.proLocationText, pro.distanceLabel && styles.proLocationTextDistance]}
+                          numberOfLines={1}
+                        >
+                          {pro.distanceLabel || `${pro.city}, ${pro.state}`}
+                        </Text>
+                      </View>
                     </View>
 
                     <TouchableOpacity style={styles.proHireBtn} activeOpacity={0.85}>
@@ -1362,6 +1369,30 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     ...Shadows.sm,
   },
+  serviceImageContainer: {
+    position: 'relative',
+    width: '100%',
+  },
+  imageDistanceBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.85)',
+    ...Shadows.sm,
+  },
+  imageDistanceBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: NexoraColors.primary,
+  },
   serviceThumbnail: {
     width: '100%',
     height: 145,
@@ -1570,19 +1601,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: NexoraColors.primary,
   },
-  proStatsRow: {
+  proMetaStack: {
+    marginBottom: 12,
+    gap: 4,
+  },
+  proMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: 5,
   },
   proStatsText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#059669',
   },
   proLocationText: {
-    fontSize: 11,
-    color: '#94a3b8',
+    fontSize: 10.5,
+    color: '#64748b',
+    fontWeight: '500',
+    flex: 1,
+  },
+  proLocationTextDistance: {
+    color: NexoraColors.primary,
+    fontWeight: '700',
   },
   proHireBtn: {
     backgroundColor: NexoraColors.primary,
