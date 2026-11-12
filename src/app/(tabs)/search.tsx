@@ -17,6 +17,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { WebView } from 'react-native-webview';
 import {
   Search,
   SlidersHorizontal,
@@ -126,6 +127,7 @@ export default function BrowseScreen() {
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('services');
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedTrade, setSelectedTrade] = useState('all');
   const [sortOption, setSortOption] = useState<SortOption>('recommended');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -417,6 +419,81 @@ export default function BrowseScreen() {
       });
   }, [products, searchQuery, selectedTrade, inStockOnly, sortOption]);
 
+  const customerLat = activeLocation?.latitude || 30.7138;
+  const customerLng = activeLocation?.longitude || 76.6896;
+  const customerCity = activeLocation?.city || 'Your Location';
+
+  const mapHtml = useMemo(() => {
+    const markers = filteredServices
+      .map((s, idx) => {
+        const lat =
+          (s as any).serviceLocation?.coordinates?.lat ||
+          customerLat + (idx === 0 ? 0.012 : idx === 1 ? -0.012 : 0.02);
+        const lng =
+          (s as any).serviceLocation?.coordinates?.lng ||
+          customerLng + (idx === 0 ? 0.012 : idx === 1 ? -0.012 : 0.02);
+        const price = s.pricingType === 'hourly' ? `$${s.price}/hr` : `$${s.price}`;
+        const titleEscaped = (s.title || '').replace(/'/g, "\\'");
+        const dist = s.distanceLabel || '';
+        return `
+          var m${idx} = L.marker([${lat}, ${lng}], {
+            icon: L.divIcon({
+              className: '',
+              html: '<div class="price-bubble">${price}</div>',
+              iconSize: [64, 26],
+              iconAnchor: [32, 13]
+            })
+          }).addTo(map);
+          m${idx}.bindPopup('<b>${titleEscaped}</b><br><span style="color:#084e8a;font-weight:700">${price}</span> • ${dist}');
+        `;
+      })
+      .join('\n');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          body, html, #map { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, system-ui, sans-serif; }
+          .price-bubble {
+            background: #084e8a;
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 14px;
+            border: 2px solid #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            text-align: center;
+            white-space: nowrap;
+          }
+          .user-pin {
+            width: 14px;
+            height: 14px;
+            background: #0ea5e9;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 12px #0ea5e9;
+          }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          var map = L.map('map', { zoomControl: false }).setView([${customerLat}, ${customerLng}], 12);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+          var userIcon = L.divIcon({ className: '', html: '<div class="user-pin"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
+          L.marker([${customerLat}, ${customerLng}], { icon: userIcon }).addTo(map).bindPopup('<b>Your Location</b><br>${customerCity}');
+          ${markers}
+        </script>
+      </body>
+      </html>
+    `;
+  }, [filteredServices, customerLat, customerLng, customerCity]);
+
   // Render Service Item
   const renderServiceCard = ({ item }: { item: ServiceOffering }) => {
     const primaryImgUrl = getImageUrl(item.images?.[0]);
@@ -707,40 +784,77 @@ export default function BrowseScreen() {
           )}
         </View>
       ) : activeTab === 'services' ? (
-        <FlatList
-          data={filteredServices}
-          keyExtractor={(item) => item._id}
-          renderItem={renderServiceCard}
-          contentContainerStyle={[
-            styles.listContainer,
-            { paddingBottom: Math.max(insets.bottom, 10) + 90 },
-          ]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={NexoraColors.primary} />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIconBox}>
-                <Search size={32} color="#94a3b8" />
-              </View>
-              <Text style={styles.emptyTitle}>No Services Found</Text>
-              <Text style={styles.emptyText}>
-                {searchQuery
-                  ? `We couldn't find any trade services matching "${searchQuery}".`
-                  : activeCategoryLabel
-                    ? `No published services in ${activeCategoryLabel} right now.`
-                    : 'No trade services match your current filters.'}{' '}
-                Try adjusting your search or resetting filters.
-              </Text>
-              {activeFilterCount > 0 || searchQuery ? (
-                <TouchableOpacity style={styles.clearFiltersBtn} onPress={resetFilters}>
-                  <Text style={styles.clearFiltersBtnText}>Reset All Filters</Text>
-                </TouchableOpacity>
-              ) : null}
+        viewMode === 'map' ? (
+          <View style={styles.mapContainer}>
+            <WebView
+              source={{ html: mapHtml }}
+              style={styles.mapWebView}
+              originWhitelist={['*']}
+            />
+            {/* Bottom Floating Snap Preview Carousel */}
+            <View style={[styles.mapBottomCarousel, { bottom: Math.max(insets.bottom, 12) + 85 }]}>
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={filteredServices}
+                keyExtractor={(item) => item._id}
+                snapToInterval={280}
+                decelerationRate="fast"
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+                renderItem={({ item }) => (
+                  <View style={styles.mapMiniCard}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.mapMiniCardTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={styles.mapMiniCardSub} numberOfLines={1}>
+                        {item.pricingType === 'hourly' ? `$${item.price}/hr` : `$${item.price} Fixed`} • {item.distanceLabel}
+                      </Text>
+                    </View>
+                    <TouchableOpacity style={styles.mapMiniCardBookBtn} activeOpacity={0.85}>
+                      <Text style={styles.mapMiniCardBookText}>Book</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              />
             </View>
-          }
-        />
+          </View>
+        ) : (
+          <FlatList
+            data={filteredServices}
+            keyExtractor={(item) => item._id}
+            renderItem={renderServiceCard}
+            contentContainerStyle={[
+              styles.listContainer,
+              { paddingBottom: Math.max(insets.bottom, 10) + 90 },
+            ]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={NexoraColors.primary} />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <View style={styles.emptyIconBox}>
+                  <Search size={32} color="#94a3b8" />
+                </View>
+                <Text style={styles.emptyTitle}>No Services Found</Text>
+                <Text style={styles.emptyText}>
+                  {searchQuery
+                    ? `We couldn't find any trade services matching "${searchQuery}".`
+                    : activeCategoryLabel
+                      ? `No published services in ${activeCategoryLabel} right now.`
+                      : 'No trade services match your current filters.'}{' '}
+                  Try adjusting your search or resetting filters.
+                </Text>
+                {activeFilterCount > 0 || searchQuery ? (
+                  <TouchableOpacity style={styles.clearFiltersBtn} onPress={resetFilters}>
+                    <Text style={styles.clearFiltersBtnText}>Reset All Filters</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            }
+          />
+        )
       ) : (
         <FlatList
           data={filteredProducts}
@@ -776,6 +890,32 @@ export default function BrowseScreen() {
             </View>
           }
         />
+      )}
+
+      {/* Floating Mode Switcher (List vs Map) - Airbnb / Thumbtack style */}
+      {activeTab === 'services' && (
+        <View style={[styles.floatingViewToggle, { bottom: Math.max(insets.bottom, 12) + 20 }]}>
+          <TouchableOpacity
+            style={[styles.viewTogglePillBtn, viewMode === 'list' && styles.viewTogglePillBtnActive]}
+            onPress={() => setViewMode('list')}
+            activeOpacity={0.85}
+          >
+            <Layers size={13} color={viewMode === 'list' ? '#ffffff' : '#64748b'} />
+            <Text style={[styles.viewTogglePillText, viewMode === 'list' && styles.viewTogglePillTextActive]}>
+              List
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.viewTogglePillBtn, viewMode === 'map' && styles.viewTogglePillBtnActive]}
+            onPress={() => setViewMode('map')}
+            activeOpacity={0.85}
+          >
+            <MapPin size={13} color={viewMode === 'map' ? '#ffffff' : '#64748b'} />
+            <Text style={[styles.viewTogglePillText, viewMode === 'map' && styles.viewTogglePillTextActive]}>
+              Map View
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Advanced Filter Modal Sheet */}
@@ -1921,5 +2061,83 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13.5,
     fontWeight: '800',
+  },
+  mapContainer: {
+    flex: 1,
+    position: 'relative',
+    backgroundColor: '#e2e8f0',
+  },
+  mapWebView: {
+    flex: 1,
+  },
+  mapBottomCarousel: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+  },
+  mapMiniCard: {
+    width: 270,
+    backgroundColor: '#ffffff',
+    borderRadius: Radius.lg,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 10,
+    ...Shadows.floating,
+  },
+  mapMiniCardTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: NexoraColors.textPrimary,
+  },
+  mapMiniCardSub: {
+    fontSize: 11,
+    color: NexoraColors.primary,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  mapMiniCardBookBtn: {
+    backgroundColor: NexoraColors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: Radius.md,
+  },
+  mapMiniCardBookText: {
+    color: '#ffffff',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  floatingViewToggle: {
+    position: 'absolute',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    borderRadius: Radius.full,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    ...Shadows.floating,
+    zIndex: 999,
+  },
+  viewTogglePillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: Radius.full,
+  },
+  viewTogglePillBtnActive: {
+    backgroundColor: NexoraColors.primary,
+  },
+  viewTogglePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  viewTogglePillTextActive: {
+    color: '#ffffff',
   },
 });

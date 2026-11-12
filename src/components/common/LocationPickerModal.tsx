@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Sparkles,
   SlidersHorizontal,
+  Search,
 } from 'lucide-react-native';
 import { NexoraColors, Radius, Shadows } from '@/constants/theme';
 import { useLocation, CustomerLocation } from '@/context/LocationContext';
@@ -53,12 +54,83 @@ export const LocationPickerModal: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'quick' | 'manual'>('quick');
 
+  // Instant Address Search / Autocomplete States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
+
   // Manual Form States
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('');
   const [stateCode, setStateCode] = useState('');
   const [zipCode, setZipCode] = useState('');
   const [selectedTag, setSelectedTag] = useState<'Home' | 'Work' | 'Other'>('Home');
+
+  // Debounced Places / Address Autocomplete
+  React.useEffect(() => {
+    if (!searchQuery || searchQuery.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingPlaces(true);
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(
+          searchQuery.trim()
+        )}`;
+        const res = await fetch(url, {
+          headers: { 'User-Agent': 'NexoraApp/1.0 (customer@nexora.com)' },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setSuggestions(data);
+          }
+        }
+      } catch (err) {
+        console.warn('Place search error:', err);
+      } finally {
+        setIsSearchingPlaces(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSelectSuggestion = (place: any) => {
+    const lat = parseFloat(place.lat);
+    const lng = parseFloat(place.lon);
+    const addr = place.address || {};
+
+    const streetPart =
+      [addr.house_number, addr.road || addr.neighbourhood || addr.suburb].filter(Boolean).join(' ') ||
+      place.name ||
+      '';
+
+    const cityPart = addr.city || addr.town || addr.village || addr.county || '';
+    const statePart = addr.state || '';
+    const zipPart = addr.postcode || '';
+    const countryPart = addr.country || 'United States';
+
+    const loc: CustomerLocation = {
+      id: `place_${place.place_id || Date.now()}`,
+      label: 'Other',
+      formattedAddress: place.display_name,
+      street: streetPart,
+      city: cityPart,
+      state: statePart,
+      zipCode: zipPart,
+      country: countryPart,
+      latitude: lat,
+      longitude: lng,
+    };
+
+    saveAddress(loc);
+    setSearchQuery('');
+    setSuggestions([]);
+    closeLocationModal();
+  };
 
   const handleUseGPS = async () => {
     const loc = await requestCurrentLocation();
@@ -168,6 +240,60 @@ export const LocationPickerModal: React.FC = () => {
               <X size={20} color="#64748b" />
             </TouchableOpacity>
           </View>
+
+          {/* Real-time Address Autocomplete Bar */}
+          <View style={styles.autocompleteSearchWrap}>
+            <Search size={18} color="#64748b" style={{ marginRight: 8 }} />
+            <TextInput
+              style={styles.autocompleteInput}
+              placeholder="Search area, street, society, or city..."
+              placeholderTextColor="#94a3b8"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCorrect={false}
+            />
+            {isSearchingPlaces && (
+              <ActivityIndicator size="small" color={NexoraColors.primary} style={{ marginLeft: 6 }} />
+            )}
+            {searchQuery.length > 0 && !isSearchingPlaces && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchQuery('');
+                  setSuggestions([]);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <X size={16} color="#94a3b8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Autocomplete Suggestions Dropdown */}
+          {suggestions.length > 0 && (
+            <View style={styles.suggestionsCard}>
+              {suggestions.map((item) => (
+                <TouchableOpacity
+                  key={item.place_id || item.lat + item.lon}
+                  style={styles.suggestionRow}
+                  onPress={() => handleSelectSuggestion(item)}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.suggestionIconCircle}>
+                    <MapPin size={16} color={NexoraColors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.suggestionMainText} numberOfLines={1}>
+                      {item.name || item.display_name.split(',')[0]}
+                    </Text>
+                    <Text style={styles.suggestionSubText} numberOfLines={1}>
+                      {item.display_name}
+                    </Text>
+                  </View>
+                  <ChevronRight size={14} color="#94a3b8" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           {/* Mode Switcher */}
           <View style={styles.segmentContainer}>
@@ -771,5 +897,60 @@ const styles = StyleSheet.create({
   },
   radiusPillTextActive: {
     color: '#ffffff',
+  },
+  autocompleteSearchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: Radius.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  autocompleteInput: {
+    flex: 1,
+    fontSize: 13,
+    color: NexoraColors.textPrimary,
+    padding: 0,
+  },
+  suggestionsCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 14,
+    maxHeight: 220,
+    overflow: 'hidden',
+    ...Shadows.card,
+  },
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    gap: 12,
+  },
+  suggestionIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#eef5fc',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestionMainText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: NexoraColors.textPrimary,
+  },
+  suggestionSubText: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
   },
 });

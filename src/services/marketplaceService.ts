@@ -38,6 +38,8 @@ export interface ServiceOffering {
   };
   distanceMiles?: number | null;
   distanceLabel?: string;
+  etaMinutes?: string | null;
+  etaLabel?: string;
   isCovered?: boolean;
 }
 
@@ -58,6 +60,8 @@ export interface FeaturedProvider {
   hourlyRate?: number;
   distanceMiles?: number | null;
   distanceLabel?: string;
+  etaMinutes?: string | null;
+  etaLabel?: string;
 }
 
 export interface MarketplaceProduct {
