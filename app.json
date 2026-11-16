@@ -39,7 +39,9 @@
           "image": "./assets/images/nexora-logo.png",
           "imageWidth": 136
         }
-      ]
+      ],
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -47,4 +49,3 @@
     }
   }
 }
-
