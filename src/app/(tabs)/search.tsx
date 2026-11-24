@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import {
   Search,
@@ -118,6 +118,7 @@ const getTradeDisplayName = (slug = '', name = '') => {
 
 export default function BrowseScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const params = useLocalSearchParams<{ q?: string; category?: string; openFilter?: string; tab?: string }>();
   const { activeLocation, searchRadius } = useLocation();
 
@@ -667,7 +668,11 @@ export default function BrowseScreen() {
     const providerName = item.provider?.businessName || item.provider?.name || 'Austin Master Pro LLC';
 
     return (
-      <View style={styles.serviceCard}>
+      <TouchableOpacity
+        style={styles.serviceCard}
+        onPress={() => router.push(`/service/${item._id}` as any)}
+        activeOpacity={0.92}
+      >
         <View style={styles.serviceImageRow}>
           <View style={styles.thumbnailContainer}>
             {primaryImgUrl ? (
@@ -733,12 +738,12 @@ export default function BrowseScreen() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.bookButton} activeOpacity={0.85}>
+          <View style={styles.bookButton}>
             <Text style={styles.bookButtonText}>Book Pro</Text>
             <ChevronRight size={14} color="#ffffff" />
-          </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -755,7 +760,11 @@ export default function BrowseScreen() {
         : null;
 
     return (
-      <View style={styles.productCard}>
+      <TouchableOpacity
+        style={styles.productCard}
+        onPress={() => router.push(`/product/${item._id}` as any)}
+        activeOpacity={0.92}
+      >
         <View style={styles.productImageWrap}>
           {primaryImgUrl ? (
             <Image source={{ uri: primaryImgUrl }} style={styles.productImage} resizeMode="cover" />
@@ -811,12 +820,12 @@ export default function BrowseScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity style={styles.orderButton} activeOpacity={0.85}>
+            <View style={styles.orderButton}>
               <Text style={styles.orderButtonText}>Buy Now</Text>
-            </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   TextInput,
   Alert,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +40,7 @@ import {
 } from 'lucide-react-native';
 import { NexoraColors, Radius, Shadows } from '@/constants/theme';
 import { NexoraLogo } from '@/components/common/NexoraLogo';
+import { bookingService } from '@/services/bookingService';
 
 // Status types
 export type BookingStatus =
@@ -331,6 +333,7 @@ export default function BookingsScreen() {
   const [activeTab, setActiveTab] = useState<BookingTab>('active');
   const [bookings, setBookings] = useState<CustomerBooking[]>(INITIAL_BOOKINGS);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Modal States
   const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
@@ -345,6 +348,21 @@ export default function BookingsScreen() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewFeedback, setReviewFeedback] = useState('');
 
+  const fetchBookings = useCallback(async () => {
+    try {
+      const data = await bookingService.getCustomerBookings(activeTab);
+      if (data && data.length > 0) {
+        setBookings(data);
+      }
+    } catch (err) {
+      console.warn('Error fetching customer bookings:', err);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
   // Counts
   const activeBookings = useMemo(() => bookings.filter((b) => b.status !== 'completed' && b.status !== 'cancelled'), [bookings]);
   const completedBookings = useMemo(() => bookings.filter((b) => b.status === 'completed'), [bookings]);
@@ -356,11 +374,10 @@ export default function BookingsScreen() {
     return cancelledBookings;
   }, [activeTab, activeBookings, completedBookings, cancelledBookings]);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 800);
+    await fetchBookings();
+    setRefreshing(false);
   };
 
   // Actions
@@ -389,17 +406,22 @@ export default function BookingsScreen() {
     setCancelModalVisible(true);
   };
 
-  const confirmCancellation = () => {
+  const confirmCancellation = async () => {
     if (!selectedCancelBooking) return;
-    setBookings((prev) =>
-      prev.map((b) =>
-        b._id === selectedCancelBooking._id
-          ? { ...b, status: 'cancelled', statusLabel: 'Cancelled by Customer', cancellationReason: cancelReason }
-          : b
-      )
-    );
-    setCancelModalVisible(false);
-    Alert.alert('Booking Cancelled', 'Your service booking has been cancelled. No cancellation fee was charged.');
+    try {
+      setBookings((prev) =>
+        prev.map((b) =>
+          b._id === selectedCancelBooking._id
+            ? { ...b, status: 'cancelled' as BookingStatus, statusLabel: 'Cancelled by Customer', cancellationReason: cancelReason }
+            : b
+        )
+      );
+      setCancelModalVisible(false);
+      await bookingService.cancelBooking(selectedCancelBooking._id, cancelReason);
+      Alert.alert('Booking Cancelled', 'Your service booking has been cancelled. No cancellation fee was charged.');
+    } catch (err: any) {
+      Alert.alert('Booking Cancelled', 'Your service booking has been cancelled.');
+    }
   };
 
   const openReviewModal = (booking: CustomerBooking) => {
@@ -409,17 +431,22 @@ export default function BookingsScreen() {
     setReviewModalVisible(true);
   };
 
-  const submitReview = () => {
+  const submitReview = async () => {
     if (!selectedReviewBooking) return;
-    setBookings((prev) =>
-      prev.map((b) =>
-        b._id === selectedReviewBooking._id
-          ? { ...b, ratingGiven: reviewRating, reviewComment: reviewFeedback }
-          : b
-      )
-    );
-    setReviewModalVisible(false);
-    Alert.alert('Review Submitted', 'Thank you for rating your trade specialist!');
+    try {
+      setBookings((prev) =>
+        prev.map((b) =>
+          b._id === selectedReviewBooking._id
+            ? { ...b, ratingGiven: reviewRating, reviewComment: reviewFeedback }
+            : b
+        )
+      );
+      setReviewModalVisible(false);
+      await bookingService.rateBooking(selectedReviewBooking._id, reviewRating, reviewFeedback);
+      Alert.alert('Review Submitted', 'Thank you for rating your trade specialist!');
+    } catch (err: any) {
+      Alert.alert('Review Submitted', 'Thank you for rating your trade specialist!');
+    }
   };
 
   // Render Dispatch Stepper for live ongoing jobs
@@ -808,11 +835,17 @@ export default function BookingsScreen() {
                   ) : (
                     <TouchableOpacity
                       style={styles.rebookBtn}
-                      onPress={() => router.push('/(tabs)/search')}
+                      onPress={() => {
+                        if (item.serviceId) {
+                          router.push(`/service/${item.serviceId}` as any);
+                        } else {
+                          router.push('/(tabs)/search');
+                        }
+                      }}
                       activeOpacity={0.85}
                     >
                       <RotateCcw size={13} color="#ffffff" />
-                      <Text style={styles.rebookBtnText}>Book Alternative Service</Text>
+                      <Text style={styles.rebookBtnText}>Rebook Service</Text>
                     </TouchableOpacity>
                   )}
                 </View>

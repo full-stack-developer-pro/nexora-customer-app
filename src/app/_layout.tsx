@@ -52,6 +52,9 @@ export default function RootLayout() {
               <Stack.Screen name="index" />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="service/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="provider/[id]" options={{ headerShown: false }} />
             </Stack>
 
             {/* Global Location & Address Picker Sheet */}

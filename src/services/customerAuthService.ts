@@ -211,6 +211,49 @@ export const customerAuthService = {
       return [];
     }
   },
+
+  /**
+   * Request 6-digit OTP code to reset password
+   */
+  requestPasswordReset: async (
+    email: string
+  ): Promise<{ success: boolean; message: string; devOtp?: string }> => {
+    try {
+      const res: any = await apiClient.post('/auth/forgot-password', {
+        email: email.trim().toLowerCase(),
+      });
+      return {
+        success: true,
+        message: res?.message || 'Verification code sent to your email.',
+        devOtp: res?.data?.devOtp,
+      };
+    } catch (err: any) {
+      throw new Error(err?.message || 'Failed to send password reset code.');
+    }
+  },
+
+  /**
+   * Verify OTP and set new password
+   */
+  resetPassword: async (
+    email: string,
+    otp: string,
+    newPassword: string
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res: any = await apiClient.post('/auth/reset-password', {
+        email: email.trim().toLowerCase(),
+        otp: otp.trim(),
+        newPassword,
+      });
+      return {
+        success: true,
+        message: res?.message || 'Password reset successfully.',
+      };
+    } catch (err: any) {
+      throw new Error(err?.message || 'Failed to reset password. Please check the code.');
+    }
+  },
 };
 
 export default customerAuthService;

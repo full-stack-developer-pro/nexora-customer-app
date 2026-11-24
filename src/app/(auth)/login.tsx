@@ -188,12 +188,8 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             style={styles.forgotPasswordWrap}
-            onPress={() =>
-              Alert.alert(
-                'Password Reset',
-                'Please contact support or check back soon for password reset self-service.'
-              )
-            }
+            onPress={() => router.push('/(auth)/forgot-password' as any)}
+            activeOpacity={0.7}
           >
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>

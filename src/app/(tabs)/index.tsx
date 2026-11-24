@@ -346,7 +346,7 @@ export default function CustomerHomeScreen() {
                     <TouchableOpacity
                       key={item._id}
                       style={styles.quickResultRow}
-                      onPress={() => handleNavigateToSearch(item.title)}
+                      onPress={() => router.push(`/service/${item._id}` as any)}
                       activeOpacity={0.75}
                     >
                       <View style={[styles.quickResultIconBox, { backgroundColor: '#eef5fc' }]}>
@@ -369,7 +369,7 @@ export default function CustomerHomeScreen() {
                     <TouchableOpacity
                       key={item._id}
                       style={styles.quickResultRow}
-                      onPress={() => handleNavigateToSearch(item.name)}
+                      onPress={() => router.push(`/product/${item._id}` as any)}
                       activeOpacity={0.75}
                     >
                       <View style={[styles.quickResultIconBox, { backgroundColor: '#ecfdf5' }]}>
@@ -604,7 +604,12 @@ export default function CustomerHomeScreen() {
               const reviewCountVal = (service as any).ratings?.count || service.provider?.reviewCount || 18;
 
               return (
-                <View key={service._id} style={styles.serviceSlideCard}>
+                <TouchableOpacity
+                  key={service._id}
+                  style={styles.serviceSlideCard}
+                  onPress={() => router.push(`/service/${service._id}` as any)}
+                  activeOpacity={0.92}
+                >
                   {/* Thumbnail with floating Distance & ETA Pill */}
                   <View style={styles.serviceImageContainer}>
                     {primaryImgUrl ? (
@@ -664,13 +669,13 @@ export default function CustomerHomeScreen() {
                         </View>
                       </View>
 
-                      <TouchableOpacity style={styles.bookButton} activeOpacity={0.85}>
+                      <View style={styles.bookButton}>
                         <Text style={styles.bookButtonText}>Book</Text>
                         <ChevronRight size={13} color="#ffffff" />
-                      </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </ScrollView>
@@ -733,7 +738,12 @@ export default function CustomerHomeScreen() {
                 scrollEventThrottle={16}
               >
                 {providers.map((pro) => (
-                  <View key={pro._id} style={styles.providerCard}>
+                  <TouchableOpacity
+                    key={pro._id}
+                    style={styles.providerCard}
+                    onPress={() => router.push(`/provider/${pro._id}` as any)}
+                    activeOpacity={0.88}
+                  >
                     {/* Top: Avatar & Rating badge */}
                     <View style={styles.providerCardTop}>
                       <View style={styles.providerAvatarCircle}>
@@ -780,11 +790,11 @@ export default function CustomerHomeScreen() {
                       </View>
                     </View>
 
-                    <TouchableOpacity style={styles.proHireBtn} activeOpacity={0.85}>
-                      <Text style={styles.proHireBtnText}>Book Specialist</Text>
+                    <View style={styles.proHireBtn}>
+                      <Text style={styles.proHireBtnText}>View Profile</Text>
                       <ChevronRight size={13} color="#ffffff" />
-                    </TouchableOpacity>
-                  </View>
+                    </View>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             )}
@@ -864,7 +874,12 @@ export default function CustomerHomeScreen() {
                   const sellerName = prod.seller?.businessName || prod.seller?.name || 'Verified Merchant';
 
                   return (
-                    <TouchableOpacity key={prod._id} style={styles.productSlideCard} activeOpacity={0.88}>
+                    <TouchableOpacity
+                      key={prod._id}
+                      style={styles.productSlideCard}
+                      onPress={() => router.push(`/product/${prod._id}` as any)}
+                      activeOpacity={0.88}
+                    >
                       {/* Product Image & Badges */}
                       <View style={styles.productImgContainer}>
                         {prodImgUrl ? (

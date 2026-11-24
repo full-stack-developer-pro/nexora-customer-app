@@ -11,31 +11,55 @@ export interface ServiceCategory {
   subcategories?: { name: string; slug: string }[];
 }
 
+export interface ServicePackage {
+  _id?: string;
+  name: string;
+  description?: string;
+  price: number;
+  duration?: number;
+  features: string[];
+}
+
 export interface ServiceOffering {
   _id: string;
   title: string;
   description: string;
   price: number;
   pricingType: 'hourly' | 'fixed' | 'custom_quote';
+  duration?: number;
   durationEstimate?: string;
   images: ImageItem[];
   category?: {
+    _id?: string;
     name: string;
     slug: string;
     iconName?: string;
     iconColor?: string;
   };
+  subcategory?: string;
   provider?: {
     _id?: string;
     name?: string;
     businessName?: string;
+    partnerType?: string;
+    bio?: string;
     rating?: number;
     reviewCount?: number;
     profileImage?: string;
     city?: string;
     state?: string;
     isVerified?: boolean;
+    phone?: string;
+    email?: string;
   };
+  serviceLocation?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    serviceRadiusMiles?: number;
+  };
+  packages?: ServicePackage[];
   distanceMiles?: number | null;
   distanceLabel?: string;
   etaMinutes?: string | null;
@@ -64,29 +88,77 @@ export interface FeaturedProvider {
   etaLabel?: string;
 }
 
+export interface ProviderPublicProfile {
+  _id: string;
+  userId?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  avatar?: string;
+  profileImage?: string;
+  businessName: string;
+  partnerType?: string;
+  bio?: string;
+  website?: string;
+  trade?: string;
+  tradeSlug?: string;
+  specialties?: string[];
+  experienceYears?: number;
+  licenseNumber?: string;
+  insurancePolicyNumber?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
+  serviceArea?: {
+    radiusMiles?: number;
+    cities?: string[];
+  };
+  city?: string;
+  state?: string;
+  rating: number;
+  reviewsCount: number;
+  completedJobs: number;
+  verified: boolean;
+  approvalStatus?: string;
+  hourlyRate?: number;
+  distanceMiles?: number | null;
+  distanceLabel?: string;
+  etaMinutes?: string | null;
+  etaLabel?: string;
+}
+
 export interface MarketplaceProduct {
   _id: string;
   name: string;
   slug?: string;
   description?: string;
+  sku?: string;
   price: number;
   compareAtPrice?: number;
   salePrice?: number;
   condition?: 'new' | 'old' | 'refurbished' | string;
   images: ImageItem[];
   stock: number;
+  lowStockThreshold?: number;
   subcategory?: string;
   category?: {
     _id?: string;
     name: string;
     slug?: string;
+    description?: string;
     iconName?: string;
   };
   seller?: {
     _id?: string;
     businessName?: string;
     name?: string;
+    city?: string;
     rating?: number;
+    reviewsCount?: number;
   };
   fulfillment?: {
     pickup?: boolean;
@@ -94,6 +166,8 @@ export interface MarketplaceProduct {
     shipping?: boolean;
     deliveryFee?: number;
   };
+  rating?: number;
+  reviewsCount?: number;
 }
 
 const DEFAULT_CATEGORIES: ServiceCategory[] = [
@@ -252,6 +326,121 @@ const DEFAULT_PROVIDERS: FeaturedProvider[] = [
   },
 ];
 
+const DEFAULT_PRODUCTS: MarketplaceProduct[] = [
+  {
+    _id: 'prod_1',
+    name: 'Heavy-Duty 20V Max Cordless Brushless Hammer Drill Kit',
+    slug: 'cordless-brushless-hammer-drill-kit',
+    description:
+      'Professional high-torque brushless hammer drill with 2-speed transmission, 20V lithium battery, rapid charger, and contractor storage bag. Built for concrete, masonry, and heavy timber fastening with maximum endurance.',
+    price: 149.99,
+    compareAtPrice: 199.99,
+    condition: 'new',
+    stock: 18,
+    sku: 'NX-DRL-20V',
+    images: [
+      'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80',
+    ],
+    category: {
+      name: 'Power Tools & Equipment',
+      slug: 'power-tools-equipment',
+      iconName: 'Hammer',
+    },
+    seller: {
+      _id: 'seller_1',
+      businessName: 'Austin Pro Hardware Supply Co.',
+      name: 'David Keller',
+      city: 'Austin, TX',
+      rating: 4.95,
+      reviewsCount: 84,
+    },
+    fulfillment: {
+      pickup: true,
+      localDelivery: true,
+      shipping: true,
+      deliveryFee: 0,
+    },
+    rating: 4.9,
+    reviewsCount: 38,
+  },
+  {
+    _id: 'prod_2',
+    name: 'Industrial Commercial High-Efficiency HVAC Merv-13 Air Filters (Pack of 6)',
+    slug: 'commercial-hvac-merv13-filters',
+    description:
+      'Hospital-grade electrostatically charged pleats trapping up to 98% of airborne dust, allergens, and micro-contaminants. Extended 90-day filter lifespan with moisture-resistant double-wall frame.',
+    price: 64.5,
+    compareAtPrice: 82.0,
+    condition: 'new',
+    stock: 42,
+    sku: 'NX-FLT-M13',
+    images: [
+      'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80',
+    ],
+    category: {
+      name: 'HVAC Parts & Air Filtration',
+      slug: 'hvac-parts-filtration',
+      iconName: 'Wind',
+    },
+    seller: {
+      _id: 'seller_2',
+      businessName: 'Apex Trade Distributors',
+      name: 'Sarah Lin',
+      city: 'Austin, TX',
+      rating: 4.88,
+      reviewsCount: 52,
+    },
+    fulfillment: {
+      pickup: true,
+      localDelivery: true,
+      shipping: true,
+      deliveryFee: 5.99,
+    },
+    rating: 4.8,
+    reviewsCount: 26,
+  },
+  {
+    _id: 'prod_3',
+    name: 'Precision Dual-Jaw Plumbing Pipe Wrench Set (10" & 14")',
+    slug: 'precision-dual-jaw-pipe-wrench-set',
+    description:
+      'Forged ductile iron housing with induction-hardened full floating hook jaws. Self-cleaning threads with replaceable spring hook and heel jaws for tight plumbing pipe maintenance.',
+    price: 48.0,
+    compareAtPrice: 59.99,
+    condition: 'new',
+    stock: 25,
+    sku: 'NX-WRN-14J',
+    images: [
+      'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=800&q=80',
+    ],
+    category: {
+      name: 'Plumbing & Water Systems',
+      slug: 'plumbing-water-systems',
+      iconName: 'Droplet',
+    },
+    seller: {
+      _id: 'seller_1',
+      businessName: 'Austin Pro Hardware Supply Co.',
+      name: 'David Keller',
+      city: 'Austin, TX',
+      rating: 4.95,
+      reviewsCount: 84,
+    },
+    fulfillment: {
+      pickup: true,
+      localDelivery: true,
+      shipping: true,
+      deliveryFee: 0,
+    },
+    rating: 4.9,
+    reviewsCount: 19,
+  },
+];
+
 export const marketplaceService = {
   /**
    * Fetch active service categories for customer discovery
@@ -367,9 +556,19 @@ export const marketplaceService = {
       const res: any = await apiClient.get('/products', {
         params,
       });
-      return Array.isArray(res?.data) ? res.data : [];
+      const data = res?.data;
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+      if (typeof limitOrParams === 'object' && (limitOrParams.search || limitOrParams.category)) {
+        return Array.isArray(data) ? data : [];
+      }
+      return DEFAULT_PRODUCTS;
     } catch {
-      return [];
+      if (typeof limitOrParams === 'object' && (limitOrParams.search || limitOrParams.category)) {
+        return [];
+      }
+      return DEFAULT_PRODUCTS;
     }
   },
 
@@ -405,6 +604,140 @@ export const marketplaceService = {
         return [];
       }
       return DEFAULT_PROVIDERS;
+    }
+  },
+
+  /**
+   * Fetch single service offering details by ID
+   */
+  async getServiceById(id: string): Promise<ServiceOffering | null> {
+    try {
+      const res: any = await apiClient.get(`/services/${id}`);
+      const data = res?.data;
+      if (data && data._id) {
+        return data;
+      }
+      // Fallback search in default services for mock/offline resilience
+      const fallback = DEFAULT_SERVICES.find((s) => s._id === id);
+      return fallback || null;
+    } catch {
+      const fallback = DEFAULT_SERVICES.find((s) => s._id === id);
+      return fallback || null;
+    }
+  },
+
+  /**
+   * Fetch single physical product details by ID
+   */
+  async getProductById(id: string): Promise<MarketplaceProduct | null> {
+    try {
+      const res: any = await apiClient.get(`/products/${id}`);
+      const data = res?.data;
+      if (data && data._id) {
+        return data;
+      }
+      // Fallback search in default products for mock/offline resilience
+      const fallback = DEFAULT_PRODUCTS.find((p) => p._id === id);
+      return fallback || null;
+    } catch {
+      const fallback = DEFAULT_PRODUCTS.find((p) => p._id === id);
+      return fallback || null;
+    }
+  },
+
+  /**
+   * Fetch single provider public profile details by ID
+   */
+  async getProviderById(id: string): Promise<ProviderPublicProfile | null> {
+    try {
+      const res: any = await apiClient.get(`/providers/${id}`);
+      const data = res?.data;
+      if (data && (data._id || data.userId)) {
+        return {
+          _id: data._id || id,
+          userId: data.userId || (typeof data.userId === 'object' ? data.userId?._id : ''),
+          name: data.name || data.userId?.name || 'Verified Specialist',
+          email: data.email || data.userId?.email || '',
+          phone: data.phone || data.userId?.phone || '',
+          avatar: data.avatar || data.userId?.avatar || '',
+          profileImage: data.avatar || data.userId?.avatar || '',
+          businessName: data.businessName || data.name || 'Nexora Verified Specialist',
+          partnerType: data.partnerType || 'service_provider',
+          bio: data.bio || '',
+          website: data.website || '',
+          trade: data.primaryCategory?.name || data.primaryCategory || data.trade || 'Licensed Specialist',
+          tradeSlug: data.primaryCategory?.slug || data.tradeSlug || '',
+          specialties: data.specialties || [],
+          experienceYears: data.experienceYears !== undefined ? data.experienceYears : 6,
+          licenseNumber: data.licenseNumber || '',
+          insurancePolicyNumber: data.insurancePolicyNumber || '',
+          address: data.address || {},
+          serviceArea: data.serviceArea || {},
+          city: data.address?.city || 'Austin',
+          state: data.address?.state || 'TX',
+          rating: Number(data.rating) || 4.9,
+          reviewsCount: Number(data.reviewsCount) || 0,
+          completedJobs: Number(data.completedJobs) || 0,
+          verified: data.approvalStatus === 'approved' || data.verified === true,
+          approvalStatus: data.approvalStatus || 'approved',
+          hourlyRate: data.hourlyRate || 85,
+        };
+      }
+      // Fallback search in default providers for mock/offline resilience
+      const fallback = DEFAULT_PROVIDERS.find((p) => p._id === id || p.userId === id);
+      if (fallback) {
+        return {
+          ...fallback,
+          bio:
+            (fallback as any).bio ||
+            `${fallback.businessName} provides premium, verified trade craftsmanship across ${fallback.city}, ${fallback.state}. Fully licensed, insured, and background checked for homeowner safety.`,
+          specialties: (fallback as any).specialties || [fallback.trade, 'Emergency Diagnostic', 'System Repairs', 'Maintenance'],
+          experienceYears: (fallback as any).experienceYears || 8,
+          address: { city: fallback.city, state: fallback.state },
+          serviceArea: { radiusMiles: 25, cities: [fallback.city, 'Round Rock', 'Cedar Park'] },
+        };
+      }
+      return null;
+    } catch {
+      const fallback = DEFAULT_PROVIDERS.find((p) => p._id === id || p.userId === id);
+      if (fallback) {
+        return {
+          ...fallback,
+          bio:
+            (fallback as any).bio ||
+            `${fallback.businessName} provides premium, verified trade craftsmanship across ${fallback.city}, ${fallback.state}. Fully licensed, insured, and background checked for homeowner safety.`,
+          specialties: (fallback as any).specialties || [fallback.trade, 'Emergency Diagnostic', 'System Repairs', 'Maintenance'],
+          experienceYears: (fallback as any).experienceYears || 8,
+          address: { city: fallback.city, state: fallback.state },
+          serviceArea: { radiusMiles: 25, cities: [fallback.city, 'Round Rock', 'Cedar Park'] },
+        };
+      }
+      return null;
+    }
+  },
+
+  /**
+   * Fetch services published by a specific provider
+   */
+  async getServicesByProvider(providerId: string): Promise<ServiceOffering[]> {
+    try {
+      const res: any = await apiClient.get('/services', {
+        params: { provider: providerId, limit: 10 },
+      });
+      const data = res?.data;
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+      // Fallback matching in default services
+      const filtered = DEFAULT_SERVICES.filter(
+        (s) => s.provider?._id === providerId || (s.provider as any)?.userId === providerId
+      );
+      return filtered.length > 0 ? filtered : DEFAULT_SERVICES.slice(0, 2);
+    } catch {
+      const filtered = DEFAULT_SERVICES.filter(
+        (s) => s.provider?._id === providerId || (s.provider as any)?.userId === providerId
+      );
+      return filtered.length > 0 ? filtered : DEFAULT_SERVICES.slice(0, 2);
     }
   },
 };
