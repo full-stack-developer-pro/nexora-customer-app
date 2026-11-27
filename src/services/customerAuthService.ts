@@ -26,7 +26,14 @@ export const customerAuthService = {
   getCachedUser: async (): Promise<CustomerUser | null> => {
     try {
       const data = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-      return data ? JSON.parse(data) : null;
+      if (!data) return null;
+      const parsed = JSON.parse(data);
+      if (parsed && parsed.role && (parsed.role as any) !== 'customer') {
+        // Automatically purge any stale or illegal cross-role provider session
+        await AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.USER]);
+        return null;
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -51,6 +58,8 @@ export const customerAuthService = {
       const res: any = await apiClient.post('/auth/signin', {
         email: email.trim().toLowerCase(),
         password,
+        expectedRole: 'customer',
+        appType: 'customer',
       });
 
       const token = res?.data?.token || res?.token;
@@ -58,6 +67,12 @@ export const customerAuthService = {
 
       if (!token || !user) {
         throw new Error(res?.message || 'Login failed. Please check your credentials.');
+      }
+
+      if (user.role && (user.role as any) !== 'customer') {
+        throw new Error(
+          'This account is registered as a Service Provider. Please sign in using the Nexora Provider App.'
+        );
       }
 
       await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token);
@@ -109,6 +124,8 @@ export const customerAuthService = {
       const res: any = await apiClient.post('/auth/google', {
         idToken,
         role: 'customer',
+        expectedRole: 'customer',
+        appType: 'customer',
       });
 
       const token = res?.data?.token || res?.token;
@@ -116,6 +133,12 @@ export const customerAuthService = {
 
       if (!token || !user) {
         throw new Error(res?.message || 'Google sign-in failed. Please try again.');
+      }
+
+      if (user.role && (user.role as any) !== 'customer') {
+        throw new Error(
+          'This account is registered as a Service Provider. Please sign in using the Nexora Provider App.'
+        );
       }
 
       await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token);
@@ -134,6 +157,11 @@ export const customerAuthService = {
       const res: any = await apiClient.get('/auth/me');
       const user = res?.data?.user || res?.user;
       if (user) {
+        if (user.role && (user.role as any) !== 'customer') {
+          // Immediately purge non-customer session
+          await AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.USER]);
+          return null;
+        }
         await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
         return user;
       }

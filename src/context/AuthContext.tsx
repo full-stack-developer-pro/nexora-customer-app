@@ -25,14 +25,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const token = await customerAuthService.getToken();
         const cached = await customerAuthService.getCachedUser();
         if (token && cached) {
-          setUser(cached);
+          if (cached.role && (cached.role as any) !== 'customer') {
+            await customerAuthService.logout();
+            setUser(null);
+          } else {
+            setUser(cached);
+          }
+        } else if (token && !cached) {
+          await customerAuthService.logout();
+          setUser(null);
         }
 
         if (token) {
           customerAuthService
             .getMe()
             .then((fresh) => {
-              if (fresh) setUser(fresh);
+              if (fresh && fresh.role === 'customer') {
+                setUser(fresh);
+              } else if (fresh && (fresh.role as any) !== 'customer') {
+                customerAuthService.logout().then(() => setUser(null));
+              }
             })
             .catch(() => {});
         }
