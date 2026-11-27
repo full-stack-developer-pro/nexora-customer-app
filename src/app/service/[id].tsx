@@ -45,6 +45,8 @@ import {
 } from '@/services/marketplaceService';
 import { bookingService } from '@/services/bookingService';
 import { useLocation } from '@/context/LocationContext';
+import { useAuth } from '@/context/AuthContext';
+import { useStripe } from '@stripe/stripe-react-native';
 import { CustomerServiceDetailSkeleton } from '@/components/common/NexoraShimmer';
 
 const { width } = Dimensions.get('window');
@@ -70,6 +72,8 @@ export default function ServiceDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeLocation } = useLocation();
+  const { user } = useAuth();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [service, setService] = useState<ServiceOffering | null>(null);
   const [loading, setLoading] = useState(true);
@@ -191,6 +195,7 @@ export default function ServiceDetailScreen() {
       const selectedDate = bookingDates[selectedDateIndex]?.fullDateString || 'Today, Nov 24, 2026';
       const selectedTime = TIME_SLOTS[selectedTimeSlotIndex]?.window || '9:00 AM - 11:30 AM';
 
+      // 1. Create booking on backend and receive Stripe PaymentIntent
       const booking = await bookingService.createBooking({
         serviceId: service._id,
         scheduledDate: selectedDate,
@@ -209,12 +214,48 @@ export default function ServiceDetailScreen() {
         },
         notes: bookingNotes.trim(),
         packageIndex: packagesList.length > 0 ? selectedTierIndex : undefined,
-        paymentMethod: 'Pay After Service',
+        paymentMethod: 'Stripe',
       });
+
+      // 2. If Stripe PaymentIntent clientSecret is present, present native Stripe PaymentSheet
+      if (booking.payment?.clientSecret) {
+        const { error: initError } = await initPaymentSheet({
+          merchantDisplayName: 'Nexora Marketplace',
+          paymentIntentClientSecret: booking.payment.clientSecret,
+          allowsDelayedPaymentMethods: false,
+          defaultBillingDetails: {
+            name: user?.name,
+            email: user?.email,
+            phone: user?.phone,
+          },
+        });
+
+        if (initError) {
+          Alert.alert('Payment Setup Error', initError.message);
+          return;
+        }
+
+        const { error: presentError } = await presentPaymentSheet();
+        if (presentError) {
+          if (presentError.code === 'Canceled') {
+            Alert.alert(
+              'Payment Incomplete',
+              `Booking #${booking.bookingNumber} was created, but payment was not completed. You can review your bookings in My Bookings.`,
+              [
+                { text: 'View Bookings', onPress: () => router.push('/(tabs)/bookings') },
+                { text: 'Close', style: 'cancel' },
+              ]
+            );
+          } else {
+            Alert.alert('Payment Failed', presentError.message);
+          }
+          return;
+        }
+      }
 
       setBookingModalVisible(false);
       Alert.alert(
-        'Booking Confirmed! 🎉',
+        'Booking & Payment Confirmed! 🎉',
         `Your request #${booking.bookingNumber} is confirmed for ${booking.scheduledTimeWindow} on ${booking.scheduledDate}.`,
         [
           { text: 'Keep Browsing', style: 'cancel' },

@@ -1,0 +1,5 @@
+export const STRIPE_PUBLISHABLE_KEY =
+  process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  'pk_test_51PtRZYP0Bexf1JWIM9FK0AJR5iOkyQPUCb11T8Le76jb9nGHnNCQ2nPWcE0BJrjNm9W6zjrx0R1nNSBChIdtHQbS008IxWo80E';
+
+export const STRIPE_MERCHANT_ID = 'merchant.com.nexora';

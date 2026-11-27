@@ -42,6 +42,14 @@ export interface BookingPricing {
   paymentStatus: 'paid' | 'pending';
 }
 
+export interface BookingPaymentData {
+  provider: string;
+  clientSecret: string;
+  paymentIntentId: string;
+  amountMinor: number;
+  currency: string;
+}
+
 export interface CustomerBooking {
   _id: string;
   bookingNumber: string;
@@ -64,6 +72,7 @@ export interface CustomerBooking {
   ratingGiven?: number;
   reviewComment?: string;
   cancellationReason?: string;
+  payment?: BookingPaymentData;
 }
 
 export interface CreateBookingInput {
@@ -181,7 +190,12 @@ export const bookingService = {
       }
       throw new Error(res?.message || 'Failed to create booking.');
     } catch (err: any) {
-      console.warn('Backend booking creation fallback:', err?.message || err);
+      const errorMessage = err?.response?.data?.message || err?.message;
+      // If the backend actively rejected (e.g. 409 Provider Stripe not onboarded, 400 validation, 403 role), propagate error
+      if (err?.response?.status && err.response.status >= 400 && err.response.status < 500) {
+        throw new Error(errorMessage || 'Booking request rejected by server.');
+      }
+      console.warn('Backend booking creation fallback:', errorMessage || err);
       // Construct fallback booking for offline/unauthenticated preview resilience
       const fallbackBooking: CustomerBooking = {
         _id: `bkg_${Date.now()}`,
