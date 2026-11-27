@@ -894,19 +894,16 @@ export default function ServiceDetailScreen() {
 
                   <View style={styles.sheetPriceRow}>
                     <Text style={styles.sheetPriceLabel}>
-                      {packagesList.length > 0 ? packagesList[selectedTierIndex]?.name || 'Service Base' : 'Service Base'}
+                      {packagesList.length > 0 ? packagesList[selectedTierIndex]?.name || 'Service Base Rate' : 'Service Base Rate'}
                     </Text>
-                    <Text style={styles.sheetPriceVal}>${activeDisplayPrice}</Text>
+                    <Text style={styles.sheetPriceVal}>${Number(activeDisplayPrice).toFixed(2)}</Text>
                   </View>
 
                   <View style={styles.sheetPriceRow}>
-                    <Text style={styles.sheetPriceLabel}>Dispatch & Travel Fee</Text>
-                    <Text style={styles.sheetPriceVal}>$15.00</Text>
-                  </View>
-
-                  <View style={styles.sheetPriceRow}>
-                    <Text style={styles.sheetPriceLabel}>Platform Fee</Text>
-                    <Text style={[styles.sheetPriceVal, { color: '#059669', fontWeight: '600' }]}>Included ($0.00)</Text>
+                    <Text style={styles.sheetPriceLabel}>Platform Fee (10% included)</Text>
+                    <Text style={[styles.sheetPriceVal, { color: '#084e8a', fontWeight: '700' }]}>
+                      ${(Number(activeDisplayPrice) * 0.10).toFixed(2)}
+                    </Text>
                   </View>
 
                   {isEmergencyBooking && (
@@ -921,7 +918,7 @@ export default function ServiceDetailScreen() {
                   <View style={styles.sheetPriceRow}>
                     <Text style={styles.sheetPriceTotalLabel}>Estimated Total</Text>
                     <Text style={styles.sheetPriceTotalVal}>
-                      ${Number(activeDisplayPrice) + 15 + (isEmergencyBooking ? 15 : 0)}
+                      ${(Number(activeDisplayPrice) + (isEmergencyBooking ? 15 : 0)).toFixed(2)}
                       {service.pricingType === 'hourly' ? ' / hr' : ''}
                     </Text>
                   </View>
@@ -949,7 +946,7 @@ export default function ServiceDetailScreen() {
                     <>
                       <Calendar size={18} color="#ffffff" style={{ marginRight: 8 }} />
                       <Text style={styles.confirmBookingBtnText}>
-                        Confirm Booking • ${Number(activeDisplayPrice) + 15 + (isEmergencyBooking ? 15 : 0)}
+                        Confirm Booking • ${(Number(activeDisplayPrice) + (isEmergencyBooking ? 15 : 0)).toFixed(2)}
                       </Text>
                     </>
                   )}

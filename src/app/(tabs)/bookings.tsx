@@ -892,19 +892,31 @@ export default function BookingsScreen() {
                     </Text>
                   </View>
 
-                  <View style={styles.invoiceLine}>
-                    <Text style={styles.invoiceLineLabel}>Nexora Guaranteed Dispatch</Text>
-                    <Text style={styles.invoiceLineValue}>
-                      {selectedInvoiceBooking?.pricing.dispatchFee === 0
-                        ? 'FREE'
-                        : `$${selectedInvoiceBooking?.pricing.dispatchFee.toFixed(2)}`}
-                    </Text>
-                  </View>
+                  {/* Urgent Dispatch (Only shown if priority emergency booking) */}
+                  {Boolean(selectedInvoiceBooking?.pricing?.dispatchFee && selectedInvoiceBooking.pricing.dispatchFee > 0) && (
+                    <View style={styles.invoiceLine}>
+                      <Text style={[styles.invoiceLineLabel, { color: '#ea580c' }]}>Urgent Priority Dispatch</Text>
+                      <Text style={[styles.invoiceLineValue, { color: '#ea580c' }]}>
+                        ${selectedInvoiceBooking?.pricing.dispatchFee.toFixed(2)}
+                      </Text>
+                    </View>
+                  )}
 
+                  {/* Platform Fee (10% from admin settings) */}
                   <View style={styles.invoiceLine}>
-                    <Text style={styles.invoiceLineLabel}>Platform Fee & Taxes</Text>
-                    <Text style={styles.invoiceLineValue}>
-                      ${selectedInvoiceBooking?.pricing.tax.toFixed(2)}
+                    <Text style={styles.invoiceLineLabel}>
+                      Platform Fee ({((selectedInvoiceBooking?.pricing as any)?.commissionRate) || 10}% included)
+                    </Text>
+                    <Text style={[styles.invoiceLineValue, { color: '#084e8a', fontWeight: '700' }]}>
+                      ${(() => {
+                        const pricing = selectedInvoiceBooking?.pricing as any;
+                        if (pricing?.commissionMinor) {
+                          return (pricing.commissionMinor / 100).toFixed(2);
+                        }
+                        const base = pricing?.basePrice || 0;
+                        const rate = pricing?.commissionRate || 10;
+                        return (base * (rate / 100)).toFixed(2);
+                      })()}
                     </Text>
                   </View>
 
