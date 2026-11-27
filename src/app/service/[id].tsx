@@ -47,7 +47,10 @@ import { bookingService } from '@/services/bookingService';
 import { useLocation } from '@/context/LocationContext';
 import { useAuth } from '@/context/AuthContext';
 import { useStripe } from '@stripe/stripe-react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { CustomerServiceDetailSkeleton } from '@/components/common/NexoraShimmer';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 const { width } = Dimensions.get('window');
 const CAROUSEL_HEIGHT = Math.min(width * 0.78, 320);
@@ -219,6 +222,23 @@ export default function ServiceDetailScreen() {
 
       // 2. If Stripe PaymentIntent clientSecret is present, present native Stripe PaymentSheet
       if (booking.payment?.clientSecret) {
+        if (isExpoGo) {
+          // Expo Go sandbox mode: Inform the user and confirm booking seamlessly
+          setBookingModalVisible(false);
+          Alert.alert(
+            'Booking Confirmed (Expo Go Test Mode) 🎉',
+            `Your booking #${booking.bookingNumber} was created on the backend with Stripe PaymentIntent ID:\n${booking.payment.paymentIntentId}\n\nNote: Native Stripe PaymentSheet requires a Development Build (npx expo run:ios). In Expo Go, your test booking is placed!`,
+            [
+              { text: 'Keep Browsing', style: 'cancel' },
+              {
+                text: 'View in My Bookings',
+                onPress: () => router.push('/(tabs)/bookings'),
+              },
+            ]
+          );
+          return;
+        }
+
         const { error: initError } = await initPaymentSheet({
           merchantDisplayName: 'Nexora Marketplace',
           paymentIntentClientSecret: booking.payment.clientSecret,
