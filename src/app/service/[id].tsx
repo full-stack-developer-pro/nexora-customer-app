@@ -504,7 +504,7 @@ export default function ServiceDetailScreen() {
           <View style={styles.leanProtectionPill}>
             <ShieldCheck size={14} color="#084e8a" />
             <Text style={styles.leanProtectionText}>
-              Nexora Pro Guarantee • Transparent Pricing & Escrow Safety
+              Nexora Pro Guarantee • Transparent Pricing & Safe Platform Checkout
             </Text>
           </View>
         </View>
@@ -904,6 +904,11 @@ export default function ServiceDetailScreen() {
                     <Text style={styles.sheetPriceVal}>$15.00</Text>
                   </View>
 
+                  <View style={styles.sheetPriceRow}>
+                    <Text style={styles.sheetPriceLabel}>Platform Fee</Text>
+                    <Text style={[styles.sheetPriceVal, { color: '#059669', fontWeight: '600' }]}>Included ($0.00)</Text>
+                  </View>
+
                   {isEmergencyBooking && (
                     <View style={styles.sheetPriceRow}>
                       <Text style={[styles.sheetPriceLabel, { color: '#ea580c' }]}>Urgent Dispatch Surcharge</Text>
@@ -924,7 +929,7 @@ export default function ServiceDetailScreen() {
                   <View style={styles.sheetPayAfterNotice}>
                     <ShieldCheck size={16} color="#059669" />
                     <Text style={styles.sheetPayAfterText}>
-                      Pay After Service Guarantee: No upfront card charge today. Pay cash or card directly to technician upon job satisfaction.
+                      Nexora Satisfaction Guarantee: Zero upfront charge today. Platform checkout secured seamlessly upon verified job completion.
                     </Text>
                   </View>
                 </View>

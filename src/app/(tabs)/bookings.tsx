@@ -902,7 +902,7 @@ export default function BookingsScreen() {
                   </View>
 
                   <View style={styles.invoiceLine}>
-                    <Text style={styles.invoiceLineLabel}>Platform Escrow & Tax</Text>
+                    <Text style={styles.invoiceLineLabel}>Platform Fee & Taxes</Text>
                     <Text style={styles.invoiceLineValue}>
                       ${selectedInvoiceBooking?.pricing.tax.toFixed(2)}
                     </Text>
