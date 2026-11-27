@@ -48,7 +48,8 @@
           "merchantIdentifier": "merchant.com.nexora",
           "enableGooglePay": true
         }
-      ]
+      ],
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,
