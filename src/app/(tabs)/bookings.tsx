@@ -905,10 +905,10 @@ export default function BookingsScreen() {
                   {/* Platform Fee (10% from admin settings) */}
                   <View style={styles.invoiceLine}>
                     <Text style={styles.invoiceLineLabel}>
-                      Platform Fee ({((selectedInvoiceBooking?.pricing as any)?.commissionRate) || 10}% included)
+                      Platform Fee ({((selectedInvoiceBooking?.pricing as any)?.commissionRate) || 10}%)
                     </Text>
                     <Text style={[styles.invoiceLineValue, { color: '#084e8a', fontWeight: '700' }]}>
-                      ${(() => {
+                      +${(() => {
                         const pricing = selectedInvoiceBooking?.pricing as any;
                         if (pricing?.commissionMinor) {
                           return (pricing.commissionMinor / 100).toFixed(2);
